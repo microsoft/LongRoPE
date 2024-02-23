@@ -1,0 +1,12 @@
+datasets==2.14.2
+deepspeed==0.10.0
+einops==0.7.0
+numpy==1.25.2
+peft==0.6.0
+torch==2.0.1
+tqdm==4.65.0
+protobuf
+SentencePiece
+transformers==4.34.0
+wandb
+# pip install flash-attn --no-build-isolation

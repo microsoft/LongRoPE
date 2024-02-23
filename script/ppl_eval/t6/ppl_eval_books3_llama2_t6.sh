@@ -8,6 +8,7 @@ source ./path_teamdrive.sh
 path_dir=$path_team
 
 
+
 # model setting
 declare -A setting
 

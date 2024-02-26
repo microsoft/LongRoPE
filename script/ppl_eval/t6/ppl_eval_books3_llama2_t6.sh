@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=2
 
 # path_dir=/your/path/to/store/model/or/dataset
 # your path to model
@@ -32,24 +32,24 @@ setting["longrope_256k"]="--model ${path_dir}/ft_out_model/cube_256k_from_128k/c
 
 
 # dataset setting
-BOOKS3="--tokenized ${path_team}/books3-test-sampled-1024k-tokenized --dataset-min-tokens 2097152 --samples 20 --sliding_window 262144"
+BOOKS3="--tokenized ${path_team}/books3-test-sampled-1024k-tokenized --dataset-min-tokens 2097152 --samples 20 --sliding-window 262144"
 
 cache_dir="../cache_dir"
 output_dir=./evaluation/result
 
 save_memory="\
---aggressive-mem-causal_lm \
---aggressive-mem-decoder"
+--aggressive-mem-causal_lm"
 # save_memory="" # check
 
 config_list=("longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 # config_list=("longlora") # check
 
 echo "dataset BOOKS3 20sample"
-max_tokens_list=(4096 8192 32768 65536 98304 131072 262144 524288 1048576)
-max_tokens_list=(4096 8192 32768 65536 98304 131072 262144) # check
+max_tokens_list=(8192 32768 65536 98304 131072 262144 524288 1048576)
+max_tokens_list=(8192 32768 65536 98304 131072 262144) # check
 
 for config in "${config_list[@]}"; do
+    rm -rf /tmp/tmp*
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"
         python evaluation/perplexity.py \

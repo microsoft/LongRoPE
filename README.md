@@ -8,17 +8,17 @@
   - `pip install -r requirements.txt`
   - ``
 
-### Eval:
+## Eval:
 
-## PPL
+### PPL
 - `cd s-PI`
   - `bash ./script/ppl_eval/ppl_eval_llama_2.sh`
 
-# Passkey
+### Passkey
 - `cd s-PI`
   - `bash ./script/pk_eval/pk_test_ft_la2.sh`
 
-# 
+###  
 
 ### Search:
 #### Search the scale for base(Llama2-7b 4k) to 256k sequences

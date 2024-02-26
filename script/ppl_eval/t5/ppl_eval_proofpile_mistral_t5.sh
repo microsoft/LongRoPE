@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=7
+export CUDA_VISIBLE_DEVICES=0
 # export HF_DATASETS_CACHE="/path/to/store/model"
 export HF_DATASETS_CACHE="../cache"
 # path_dir=/your/path/to/store/model/or/dataset
@@ -23,12 +23,10 @@ setting["yarn_64k_mistral"]="--model ${path_team}/Yarn-Mistral-7b-64k --method y
 setting["yarn_128k_mistral"]="--model ${path_team}/Yarn-Mistral-7b-128k --method yarn --finetuned --factor 16.0 --original-max-position-embeddings 8192"
 
 # longrope Mistral 128k
-setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400 --method s_pi --s_pi_para ./evolution/test/result_alpha/ft_s_pi_131072_result.csv --finetuned --factor 32.0 --original-max-position-embeddings 4096"
+setting["longrope_128k_mistral"]="--model ${path_team}/ft_out_model/cube-16k-mistral-128k/ck-400 --method s_pi --finetuned --factor 32.0 --original-max-position-embeddings 4096"
 
 # longrope Mistral 256k
-setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube_256k_from_128k/ck-600 --method s_pi --s_pi_para ./evolution/test/result_alpha/ft_s_pi_262144_result_118.csv --finetuned --factor 64.0 --original-max-position-embeddings 4096"
-
-
+setting["longrope_256k_mistral"]="--model ${path_team}/ft_out_model/cube-16k-mistral-256k/ck-400 --method s_pi  --finetuned --factor 64.0 --original-max-position-embeddings 4096"
 
 # dataset setting
 PROOFPILE_128k="--tokenized ${path_team}/proofpile-test-tokenized-mistral --dataset-min-tokens 131072 --samples 10 --truncate"
@@ -46,8 +44,8 @@ config_list=("base_mistral" "yarn_64k_mistral" "yarn_128k_mistral" "longrope_128
 config_list=("yarn_64k_mistral" "yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral") # check
 
 echo "dataset PROOFPILE 10sample"
-# max_tokens_list=(4096 8192 32768 65536 98304 131072)
-max_tokens_list=(4096)
+max_tokens_list=(4096 8192 32768 65536 98304 131072)
+# max_tokens_list=(4096)
 
 for config in "${config_list[@]}"; do
     for max_tokens in "${max_tokens_list[@]}"; do
@@ -71,7 +69,7 @@ for config in "${config_list[@]}"; do
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"
         python evaluation/perplexity.py \
-            ${PROOFPILE_128k}\
+            ${PROOFPILE_256k}\
             ${setting[$config]} \
             --max-tokens $max_tokens \
             --min-tokens $max_tokens \

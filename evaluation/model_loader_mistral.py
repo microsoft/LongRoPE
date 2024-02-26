@@ -12,7 +12,6 @@ print(current_path)
 import torch
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
-from attention.llama_attn_replace import replace_llama_attn
 
 from attention.mistral_attn_replace import replace_mistral_attn
 import math
@@ -175,7 +174,7 @@ def load_model(model, args):
            transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
         else:
             raise ValueError("name not in mistral")
-            # transformers.models.llama.modeling_llama.LlamaForCausalLM.forward = forward_llama_for_causal_lm
+        
     print("aggressive-mem-decoder", args.aggressive_mem_decoder)
     if args.aggressive_mem_decoder:
         transformers.models.mistral.modeling_mistral.MistralDecoderLayer.forward = forward_mistral_decoder_layer
@@ -224,13 +223,10 @@ def load_model(model, args):
                 if seq_range[i] <= seq_len <= seq_range[i+1]:   
                     seq_len = seq_range[i+1]
                     break
-            
-            if config.model_type == "llama":
-                model_type = "la2"
-            elif config.model_type == "mistral": 
+            if config.model_type == "mistral": 
                 model_type = "mis"
             else:
-                raise ValueError("model_type did not support!")  
+                raise ValueError("model_type is not mistral")  
             ft_model_len = (config.max_position_embeddings + 1023) // 1024
 
             flag_twice = False
@@ -381,7 +377,6 @@ def add_args(parser: ArgumentParser):
     parser.add_argument("--max-position-embeddings", type=int)
     parser.add_argument("--original-max-position-embeddings", type=int)
     
-    # parser.add_argument("--flash-attention", action="store_true")
     parser.add_argument("--cache_dir", type=str)
     parser.add_argument("--flash_attn", action="store_true")
     parser.add_argument("--method", type=str, default="pi")
@@ -393,10 +388,12 @@ def add_args(parser: ArgumentParser):
     parser.add_argument("--stream", type=int, default=0)
     parser.add_argument("--peft-model", type=str)
     parser.add_argument("--use_cache", action="store_true")
+    
     return parser
 
 
 
 def load_model_and_apply_patches_mistral(model, args):
     # return apply_patches(load_model(model, args), args)
+    print(args)
     return load_model(model, args)

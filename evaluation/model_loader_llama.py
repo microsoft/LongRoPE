@@ -275,10 +275,6 @@ def load_model(model, args):
 
     print("aggressive-mem-causal_lm", args.aggressive_mem_causal_lm)
     if args.aggressive_mem_causal_lm:
-        # if "Mistral" in args.model[0] or "mistral" in args.model[0]:
-        #    print("TODO") 
-        #    transformers.models.llama.modeling_llama.LlamaForCausalLM.forward = forward_llama_for_causal_lm
-        # else:
         transformers.models.llama.modeling_llama.LlamaForCausalLM.forward = forward_llama_for_causal_lm
         transformers.models.llama.modeling_llama.LlamaModel.forward = forward_llama_model
 
@@ -331,10 +327,8 @@ def load_model(model, args):
             
             if config.model_type == "llama":
                 model_type = "la2"
-            elif config.model_type == "mistral": 
-                model_type = "mis"
             else:
-                raise ValueError("model_type did not support!")  
+                raise ValueError("model_type is not llama")  
             ft_model_len = (config.max_position_embeddings + 1023) // 1024
 
             flag_twice = False

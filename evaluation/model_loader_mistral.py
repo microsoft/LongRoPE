@@ -186,9 +186,6 @@ def load_model(model, args):
         print("use replace flash attn")
         # replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True)
         replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True, aggressive_memory=args.aggressive_mem_attn)
-            # replace_llama_attn(use_flash_attn=True, use_full=True, inference=True)
-        # else:
-        #     raise ValueError("name not in mistral")
     
     model_name = model
     config = transformers.AutoConfig.from_pretrained(

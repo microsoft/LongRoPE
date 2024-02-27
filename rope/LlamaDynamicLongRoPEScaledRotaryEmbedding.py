@@ -2,7 +2,7 @@ import math
 import torch
 import numpy as np
 
-class LlamaDynamicSPIScaledRotaryEmbedding(torch.nn.Module):
+class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
 
     def __init__(self, dim, 
                  max_position_embeddings=4096,

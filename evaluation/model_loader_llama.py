@@ -256,8 +256,6 @@ def forward_llama_decoder_layer(
 
 
 def load_model(model, args):
-    # from scaled_rope.modeling_llama import LlamaForCausalLM
-    # from scaled_rope.configuration_llama import LlamaConfig
 
     print("llama config", args.model[0])
     # if "Yarn-Llama-2-7b-64k" in args.model[0][0]:
@@ -270,8 +268,6 @@ def load_model(model, args):
     config_cls = LlamaConfig
     from transformers import LlamaForCausalLM
     model_cls = LlamaForCausalLM
-        
-
 
     print("aggressive-mem-causal_lm", args.aggressive_mem_causal_lm)
     if args.aggressive_mem_causal_lm:
@@ -315,11 +311,11 @@ def load_model(model, args):
     
     # load rope_para:
     # ft: 4k 8k 256k 512k 1024k 
-    if args.finetuned and args.method == "s_pi":
+    if args.finetuned and args.method == "longrope":
         print("args.finetuned", args.finetuned, "use rope_scale.pt")
         if args.max_tokens != None:
             seq_len = (args.max_tokens + 1023) // 1024
-            seq_range = [0, 4, 8, 16, 128, 256, 1024, 2048, 10000]
+            seq_range = [0, 4, 8, 16, 32, 128, 256, 1024, 2048, 10000]
             for i in range(len(seq_range)-1):
                 if seq_range[i] <= seq_len <= seq_range[i+1]:   
                     seq_len = seq_range[i+1]
@@ -347,16 +343,17 @@ def load_model(model, args):
             if para_key == '128k_la2_256k':
                 para_key = 'ft_la2_256k'
                 
-            rope_rescale = torch.load("./evaluation/rope_rescale.pt")
-            # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
+            rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
             
-            if flag_twice:
-                lambda_1 = rope_rescale[para_key] * rope_rescale[ft_model_key]
-            else: 
-                lambda_1 = rope_rescale[para_key]
+            lambda_1 = rope_rescale[para_key]
+            # if flag_twice:
+            #     lambda_1 = rope_rescale[para_key] * rope_rescale[ft_model_key]
+            #     # NOTE
+            # else: 
+            #     lambda_1 = rope_rescale[para_key]
         else:
             raise ValueError("args.max_tokens == None")  
-    elif args.method == "s_pi" and not args.finetuned:
+    elif args.method == "longrope" and not args.finetuned:
         print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
         # use base scale
         lambda_1 = np.full((32, 64), 1.0)
@@ -388,40 +385,31 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device
             ) 
-    elif args.method == "s_pi":
+    elif args.method == "longrope":
         print("--use ", args.method)
-        from rope.LlamaSPIScaledRotaryEmbedding import LlamaSPIScaledRotaryEmbedding
+        from rope.LlamaLongRoPEScaledRotaryEmbedding import LlamaLongRoPEScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
         
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
-        # if args.s_pi_twice_para != None:
-        #     lambda_twice = np.loadtxt(open(args.s_pi_twice_para, "rb"), delimiter=",", skiprows=0)
-        #     if lambda_twice.shape == (64,):
-        #         lambda_twice = np.tile(lambda_twice, (32, 1))
-        #     assert lambda_twice.shape == (32, 64), f"lambda_twice shape error {lambda_twice.shape}"
-        #     lambda_1 = lambda_1 * lambda_twice
             
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
         layer = 0
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaSPIScaledRotaryEmbedding(
+            each.self_attn.rotary_emb = LlamaLongRoPEScaledRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps
+                # tmps=args.tmps
             ) 
             layer += 1
     
-    elif args.method == "s_pi_start":
+    elif args.method == "longrope_start":
         print("--use ", args.method)
-        from rope.LlamaSPIScaledStartTokenRotaryEmbedding import LlamaSPIScaledStartTokenRotaryEmbedding
+        from rope.LlamaLongRoPEScaledStartTokenRotaryEmbedding import LlamaLongRoPEScaledStartTokenRotaryEmbedding
         print("args.finetuned", args.finetuned)
-        
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
         
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
@@ -435,39 +423,37 @@ def load_model(model, args):
         # cos_sin_origin=None
         
         layer = 0
-        print("start_token", args.stream)
+        print("start_token", args.start_token)
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaSPIScaledStartTokenRotaryEmbedding(
+            each.self_attn.rotary_emb = LlamaLongRoPEScaledStartTokenRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps,
-                start_token=args.stream,
+                # tmps=args.tmps,
+                start_token=args.start_token,
                 cos_sin_origin=cos_sin_origin
             ) 
             layer += 1
         
-    elif args.method == "dy_s_pi":
+    elif args.method == "dy_longrope":
         print("--use ", args.method)
-        from rope.LlamaDynamicSPIScaledRotaryEmbedding import LlamaDynamicSPIScaledRotaryEmbedding
+        from rope.LlamaDynamicLongRoPEScaledRotaryEmbedding import LlamaDynamicLongRoPEScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
-        
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
         
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         layer = 0
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaDynamicSPIScaledRotaryEmbedding(
+            each.self_attn.rotary_emb = LlamaDynamicLongRoPEScaledRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps
+                # tmps=args.tmps
             ) 
             layer += 1
             
@@ -494,28 +480,36 @@ def load_model(model, args):
 
 def add_args(parser: ArgumentParser):
     
-    parser.add_argument("--max-position-embeddings", type=int)
-    parser.add_argument("--original-max-position-embeddings", type=int)
-    # parser.add_argument("--flash-attention", action="store_true")
+    parser.add_argument("--max_position_embeddings", type=int)
+    parser.add_argument("--original_max_position_embeddings", type=int, default=4096)
+    
     parser.add_argument("--cache_dir", type=str)
-    parser.add_argument("--flash_attn", action="store_true")
-    parser.add_argument("--method", type=str, default="pi")
-    parser.add_argument("--s_pi_para", type=str, default="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv")
-    parser.add_argument("--s_pi_twice_para", type=str, default=None)
-    parser.add_argument("--tmps", type=str, default="su", help='')
+    parser.add_argument("--method", type=str, default="pi", 
+                        choices=["pi", "ntk", "dy_ntk", "yarn", "dy_yarn", "longrope", "dy_longrope", "longrope_start"])
+    
+    # search eval
+    parser.add_argument("--longrope_para", type=str, default=None)
+    parser.add_argument("--longrope_twice_para", type=str, default=None)
+
+    # parser.add_argument("--tmps", type=str, default="su", help='')
     parser.add_argument("--factor", type=float)
     parser.add_argument("--finetuned", action="store_true")
-    parser.add_argument("--aggressive-mem-decoder", action="store_true")
-    parser.add_argument("--aggressive-mem-causal_lm", action="store_true")
-    parser.add_argument("--aggressive-mem-attn", action="store_true")
-    parser.add_argument("--stream", type=int, default=0)
-    parser.add_argument("--peft-model", type=str)
+    
+    # accelerate
+    parser.add_argument("--flash_attn", action="store_true")
+    parser.add_argument("--aggressive_mem_decoder", action="store_true")
+    parser.add_argument("--aggressive_mem_causal_lm", action="store_true")
+    parser.add_argument("--aggressive_mem_attn", action="store_true")
+    
+    parser.add_argument("--start_token", type=int, default=0)
+    parser.add_argument("--peft_model", type=str)
+    
+    # use KV cache
     parser.add_argument("--use_cache", action="store_true")
     return parser
-# 
+
 
 
 def load_model_and_apply_patches(model, args):
-    # print(args)
-    # return apply_patches(load_model(model, args), args)
+
     return load_model(model, args)

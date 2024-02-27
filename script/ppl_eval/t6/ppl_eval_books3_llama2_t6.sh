@@ -25,10 +25,10 @@ setting["yarn_64k"]="--model ${path_team}/Yarn-Llama-2-7b-64k --method yarn --fi
 setting["yarn_128k"]="--model ${path_team}/Yarn-Llama-2-7b-128k --method yarn --finetuned --factor 32.0"
 
 # longrope 128k
-setting["longrope_128k"]="--model ${path_dir}/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400 --method s_pi --s_pi_para ./evolution/test/result_alpha/ft_s_pi_131072_result.csv --finetuned --factor 32.0"
+setting["longrope_128k"]="--model ${path_dir}/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400 --method longrope --longrope_para ./evolution/test/result_alpha/ft_longrope_131072_result.csv --finetuned --factor 32.0"
 
 # longrope 256k
-setting["longrope_256k"]="--model ${path_dir}/ft_out_model/cube_256k_from_128k/ck-600 --method s_pi --s_pi_para ./evolution/test/result_alpha/ft_s_pi_262144_result_118.csv --finetuned --factor 64.0"
+setting["longrope_256k"]="--model ${path_dir}/ft_out_model/cube_256k_from_128k/ck-600 --method longrope --longrope_para ./evolution/test/result_alpha/ft_longrope_262144_result_118.csv --finetuned --factor 64.0"
 
 
 # dataset setting

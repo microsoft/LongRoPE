@@ -122,7 +122,6 @@ def main(args):
     tokenizer = AutoTokenizer.from_pretrained(
         models[0], model_max_length=sys.maxsize, trust_remote_code=True, use_fast = False)
     
-    
     tokenizer.pad_token = tokenizer.eos_token
 
     if args.tokenized:
@@ -186,14 +185,19 @@ def main(args):
 
         result = []
         for max_length in tokens:
-            if "Mistral" in args.model[0][0] or "mistral" in args.model[0][0]:
+
+            print(model)
+            config = transformers.AutoConfig.from_pretrained(model, cache_dir=args.cache_dir)
+            print("config", config)
+            if config.model_type == "mistral":
                 print(args.model[0])
                 from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
                 loaded, _ = load_model_and_apply_patches_mistral(model, args)
-            else:
+            elif config.model_type == "llama":
                 print(args.model[0])
                 loaded, _ = load_model_and_apply_patches(model, args)
-
+            else:
+                raise ValueError("Model type did not support!")
             
             s_time = time.time()
             print("args.use_cache", args.use_cache)
@@ -228,23 +232,22 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--subset", type=str)
     parser.add_argument("-f", "--feature", type=str)
     
-    parser.add_argument("--max-tokens", type=int, default=8192)
-    parser.add_argument("--min-tokens", type=int, default=256)
-    parser.add_argument("--dataset-min-tokens", type=int)
-    parser.add_argument("--tokens-step", type=int)
-    parser.add_argument("--sliding-window", type=int, default=256)
-    parser.add_argument("--context-window", type=int, default=65536)
+    parser.add_argument("--max_tokens", type=int, default=8192)
+    parser.add_argument("--min_tokens", type=int, default=256)
+    parser.add_argument("--dataset_min_tokens", type=int)
+    parser.add_argument("--tokens_step", type=int)
+    parser.add_argument("--sliding_window", type=int, default=256)
+    # parser.add_argument("--context_window", type=int, default=65536)
     parser.add_argument("--truncate", action="store_true")
     parser.add_argument("--split", type=str, default="test")
     parser.add_argument("--samples", type=int)
-    parser.add_argument("--save-tokenized", type=str)
+    parser.add_argument("--save_tokenized", type=str)
     parser.add_argument("--tokenized", type=str)
-    parser.add_argument("--output-file", type=str)
-    parser.add_argument("--original_max_position_embeddings", type=int)
+    parser.add_argument("--output_file", type=str)
+    # parser.add_argument("--original_max_position_embeddings", type=int, default=4096)
     
+    # mistral max context window
     parser.add_argument("--sliding_window_attention", type=int)
-    
-    parser.add_argument("--small_scale", type=float, default=1.0)
     
     
     main(add_args(parser).parse_args())

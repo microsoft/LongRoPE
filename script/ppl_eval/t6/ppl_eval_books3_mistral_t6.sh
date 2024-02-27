@@ -23,10 +23,10 @@ setting["yarn_64k_mistral"]="--model ${path_dir}/Yarn-Mistral-7b-64k --method ya
 setting["yarn_128k_mistral"]="--model ${path_dir}/Yarn-Mistral-7b-128k --method yarn --finetuned --factor 16.0 --original-max-position-embeddings 8192"
 
 # longrope Mistral 128k
-setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-128k/ck-400 --method s_pi --finetuned --factor 32.0 --original-max-position-embeddings 4096"
+setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-128k/ck-400 --method longrope --finetuned --factor 32.0 --original-max-position-embeddings 4096"
 
 # longrope Mistral 256k
-setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method s_pi  --finetuned --factor 64.0 --original-max-position-embeddings 4096"
+setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original-max-position-embeddings 4096"
 
 
 

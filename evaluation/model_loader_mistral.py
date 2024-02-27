@@ -182,7 +182,6 @@ def load_model(model, args):
         
     print("flash_attn", args.flash_attn)
     if args.flash_attn:
-        # if "Mistral" in args.model[0][0] or "mistral" in args.model[0][0]:
         print("use replace flash attn")
         # replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True)
         replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True, aggressive_memory=args.aggressive_mem_attn)
@@ -214,11 +213,11 @@ def load_model(model, args):
     
     # load rope_para:
     # ft: 4k 8k 256k 512k 1024k 
-    if args.finetuned and args.method == "s_pi":
+    if args.finetuned and args.method == "longrope":
         print("args.finetuned", args.finetuned, "use rope_scale.pt")
         if args.max_tokens != None:
             seq_len = (args.max_tokens + 1023) // 1024
-            seq_range = [0, 4, 8, 16, 128, 256, 1024, 2048, 10000]
+            seq_range = [0, 4, 8, 16, 32, 128, 256, 1024, 2048, 10000]
             for i in range(len(seq_range)-1):
                 if seq_range[i] <= seq_len <= seq_range[i+1]:   
                     seq_len = seq_range[i+1]
@@ -249,12 +248,12 @@ def load_model(model, args):
             # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
             
             if flag_twice:
-                lambda_1 = rope_rescale[para_key] * rope_rescale[ft_model_key]
+                lambda_1 = rope_rescale[para_key]
             else: 
                 lambda_1 = rope_rescale[para_key]
         else:
             raise ValueError("args.max_tokens == None")  
-    elif args.method == "s_pi" and not args.finetuned:
+    elif args.method == "longrope" and not args.finetuned:
         print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
         # use base scale
         lambda_1 = np.full((32, 64), 1.0)
@@ -290,13 +289,11 @@ def load_model(model, args):
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 beta_fast=128
             ) 
-    if args.method == "s_pi":
+    if args.method == "longrope":
         print("--use ", args.method)
         
         from rope.LlamaSPIScaledRotaryEmbedding import LlamaSPIScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
-        
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
         
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
@@ -313,12 +310,12 @@ def load_model(model, args):
             ) 
             layer += 1
     
-    elif args.method == "s_pi_start":
+    elif args.method == "longrope_start":
         print("--use ", args.method)
         from rope.LlamaSPIScaledStartTokenRotaryEmbedding import LlamaSPIScaledStartTokenRotaryEmbedding
         print("args.finetuned", args.finetuned)
         
-        lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
+        lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
         
         # assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
@@ -347,12 +344,12 @@ def load_model(model, args):
             ) 
             layer += 1
             
-    elif args.method == "dy_s_pi":
+    elif args.method == "dy_longrope":
         print("--use ", args.method)
         from rope.LlamaDynamicSPIScaledRotaryEmbedding import LlamaDynamicSPIScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
         
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
+        # lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
         
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
@@ -380,7 +377,7 @@ def add_args(parser: ArgumentParser):
     parser.add_argument("--cache_dir", type=str)
     parser.add_argument("--flash_attn", action="store_true")
     parser.add_argument("--method", type=str, default="pi")
-    parser.add_argument("--s_pi_para", type=str, default="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv")
+    parser.add_argument("--longrope_para", type=str, default="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv")
     parser.add_argument("--tmps", type=str, default="su", help='')
     parser.add_argument("--factor", type=float)
     parser.add_argument("--finetuned", action="store_true")

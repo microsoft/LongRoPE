@@ -25,7 +25,7 @@ elif uname -a | grep -q "aiforms2000002"; then
     path_team="/mnt/yiran/teamdrive/ExtendSeqLen"
     #
 elif uname -a | grep -q "aiforms2000003"; then
-    path_team="/home/aisilicon/yiran/teamdrive2/ExtendSeqLen"
+    path_team="/mnt/yiran/teamdrive3/ExtendSeqLen"
     #
 elif uname -a | grep -q "GCRAZGDL1506"; then
     path_team="/home/chengzhang/teamdrive/ExtendSeqLen"

@@ -3,13 +3,15 @@ export CUDA_VISIBLE_DEVICES=0
 
 path_dir=/your/path/to/store/model/or/dataset
 
+model=${path_dir}/longrope-llama2-256k/
+model_ft_len=262144
 
-source ./path_teamdrive.sh
-path_dir=$path_team
-model="${path_dir}/Llama-2-7b-hf/"
-
-data_tokenized="${path_dir}/pg19_valid_mapped"
+# dataset
+BOOK3_VALID_MISTRAL="--tokenized ${path_dir}/books3-valid-sampled-1024k-tokenized --samples 3 --truncate"
 cache_dir="../cache_dir"
+
+max_tokens=524288
+serach_method="dim_mono"
 
 save_memory="\
 --aggressive-mem-causal_lm \
@@ -20,23 +22,20 @@ save_memory="\
 # seq_len > 256k use --aggressive-mem-causal_lm --aggressive-mem-decoder --aggressive-mem-attn
 
 
-max_tokens=262144
-serach_method="dim_mono"
-
 python evolution/ppl_search_evolution.py \
+    ${BOOK3_VALID_MISTRAL} \
     --model $model \
-    --samples 5 \
     --s_pi_method $serach_method \
-    --s_pi_init_para "./evolution/${serach_method}/init_alpha/${serach_method}_${max_tokens}.csv" \
-    --factor $((max_tokens / 4096)) \
+    --search_twice \
+    --finetuned \
+    --s_pi_init_para "./evolution/${serach_method}/init_alpha/${serach_method}_$((max_tokens / model_ft_len * 4096 )).csv" \
+    --factor $((max_tokens / model_ft_len)) \
     --max-tokens $max_tokens \
     --min-tokens $max_tokens \
     --tokens-step 4000 \
-    --tokenized $data_tokenized \
-    --original-max-position-embeddings 4096 \
     --dataset-min-tokens $max_tokens \
-    --sliding-window 65536 \
+    --original-max-position-embeddings 4096 \
     --flash_attn \
     ${save_memory} \
-    --cache_dir $cache_dir \
-    --truncate 
+    --cache_dir $cache_dir 
+

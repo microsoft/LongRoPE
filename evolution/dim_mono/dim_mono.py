@@ -23,7 +23,6 @@ class DimMonoGeneticAlgorithm(GeneticAlgorithm):
                 LlamaSPIScaledRotaryEmbedding(dim = 128,
                     lambda_1=dim_alpha, tmps=self.args.tmps)
                 
-        # config_compute = [loaded, tokenizer, input_texts, tokenizer.bos_token, args.sliding_window, args.truncate, args.aggressive_memory]
         ppl = compute_perplexity(model=loaded, tokenizer=tokenizer, encodings=input_texts,
             add_start_token=tokenizer.bos_token is not None, max_length=max_length,
             sliding_window=self.args.sliding_window, truncate=self.args.truncate,

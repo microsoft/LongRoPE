@@ -157,16 +157,16 @@ def main(args):
             random.seed(seed)
      
             # load evo para from json
-            json_path = f"./evolution/{args.s_pi_method}/parameters_dict.json"
+            json_path = f"./evolution/{args.longrope_method}/parameters_dict.json"
             with open(json_path, 'r') as json_file:
                 loaded_parameters = json.load(json_file)
 
             # load init solution from csv:
-            init_alpha = np.loadtxt(open(args.s_pi_init_para, "rb"), delimiter=",", skiprows=0)
+            init_alpha = np.loadtxt(open(args.longrope_init_para, "rb"), delimiter=",", skiprows=0)
             
             scale = max_length / args.original_max_position_embeddings
                    
-            if args.s_pi_method == "dim_piece_mono":
+            if args.longrope_method == "dim_piece_mono":
                 
                 from evolution.dim_piece_mono.dim_piece_mono import DimPieceMonoGeneticAlgorithm
                 assert init_alpha.shape == (64+2,), f"init_alpha shape error {init_alpha.shape}"
@@ -186,7 +186,7 @@ def main(args):
                     assert new_alpha.shape == (64,)
                     best_result[0] = np.tile(new_alpha, (32, 1))
               
-            elif args.s_pi_method == "dim_mono":
+            elif args.longrope_method == "dim_mono":
                 from evolution.dim_mono.dim_mono import DimMonoGeneticAlgorithm
                 if init_alpha.shape == (32,64):
                     init_alpha = init_alpha[0,:]
@@ -204,7 +204,7 @@ def main(args):
                 if best_result[0].shape != (32, 64):
                     best_result[0] = np.tile(best_result[0], (32, 1))
             
-            elif args.s_pi_method == "dim_mono_n":
+            elif args.longrope_method == "dim_mono_n":
                 from evolution.dim_mono_n.dim_mono_n import DimMonoNGeneticAlgorithm
                 assert init_alpha.shape == (64+1,), f"init_alpha shape error {init_alpha.shape}"
                 
@@ -222,7 +222,7 @@ def main(args):
             
             # save result
             max_time_budget = int(loaded_parameters["evo_scale"] * loaded_parameters["max_time_budget"])
-            filename = f"./evolution/{args.s_pi_method}/result_alpha/final_{args.s_pi_method}_{max_length}-it_{max_time_budget}.csv"
+            filename = f"./evolution/{args.longrope_method}/result_alpha/final_{args.longrope_method}_{max_length}-it_{max_time_budget}.csv"
             
             assert best_result[0].shape == (32, 64), f"best_result.shape error{best_result[0].shape}"
             np.savetxt(get_unique_filename(filename), best_result[0], delimiter=',' )
@@ -240,23 +240,23 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dataset", type=str, default="tau/scrolls")
     parser.add_argument("-s", "--subset", type=str, default="gov_report")
     parser.add_argument("-f", "--feature", type=str, default="input")
-    parser.add_argument("--max-tokens", type=int, default=8000)
-    parser.add_argument("--min-tokens", type=int, default=200)
-    parser.add_argument("--tokens-step", type=int, default=200)
+    parser.add_argument("--max_tokens", type=int, default=8000)
+    parser.add_argument("--min_tokens", type=int, default=200)
+    parser.add_argument("--tokens_step", type=int, default=200)
     parser.add_argument("--split", type=str, default="test")
     parser.add_argument("--samples", type=int, default=50)
-    parser.add_argument("--output-file", type=str)
+    parser.add_argument("--output_file", type=str)
 
     parser.add_argument("--recovery", type=str, default=None, help="Path to recovery file")
     
-    parser.add_argument("--s_pi_init_para", type=str, default="./evolution/dim_mono/init_alpha/dim_mono_8192.csv")
+    parser.add_argument("--longrope_init_para", type=str, default="./evolution/dim_mono/init_alpha/dim_mono_8192.csv")
 
-    parser.add_argument("--s_pi_method", type=str, default="dim_mono")
-    parser.add_argument("--sliding-window", type=int, default=256)
+    parser.add_argument("--longrope_method", type=str, default="dim_mono")
+    parser.add_argument("--sliding_window", type=int, default=256)
     parser.add_argument("--original_max_position_embeddings", type=int)
     parser.add_argument("--tokenized", type=str)
-    parser.add_argument("--dataset-min-tokens", type=int)
-    # parser.add_argument("--aggressive_memory", action="store_true")
+    parser.add_argument("--dataset_min_tokens", type=int)
+
     parser.add_argument("--search_twice", action="store_true")
     parser.add_argument("--truncate", action="store_true")
 

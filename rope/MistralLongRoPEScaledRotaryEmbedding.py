@@ -2,7 +2,7 @@ import math
 import torch
 import numpy as np
 
-class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
+class MistralLongRoPEScaledRotaryEmbedding(torch.nn.Module):
 
     def __init__(self, dim, 
                  max_position_embeddings=4096,
@@ -11,7 +11,7 @@ class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
                  lambda_1=np.zeros((64,)), finetuned=False,
                  original_max_position_embeddings=4096,
                  mscale = 1.0,
-                #  tmps = "su"
+                #  tmps="su"
                 ):
         super().__init__()
         
@@ -19,13 +19,14 @@ class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         self.base = base
         
         self.scale = scale
-        self.modle_factor = scale
-        
+        # self.ntk_factor = ntk_factor
         self.lambda_1 = lambda_1
+        # print("lambda_1", lambda_1)
         self.mscale = mscale
         self.original_max_position_embeddings = original_max_position_embeddings
         
         # self.tmps = tmps
+        
         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim))
         self.register_buffer("inv_freq", inv_freq)
 
@@ -34,9 +35,10 @@ class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             seq_len=max_position_embeddings, device=self.inv_freq.device, dtype=torch.get_default_dtype()
         )
         
-    def _get_mscale(self, scale=1):
+    def _get_mscale_su(self, scale=1):
         if scale <= 1:
             return 1.0
+        # return 0.1 * math.log(scale) + 1.0
         return math.sqrt( math.log(scale*self.original_max_position_embeddings)/math.log(self.original_max_position_embeddings) )
     
     def _set_cos_sin_cache(self, seq_len, device, dtype):
@@ -46,17 +48,14 @@ class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         base = self.base
         scaling_factor = max(seq_len / (1.0*self.original_max_position_embeddings), 1.0)
         
-        base_1 = torch.from_numpy(self.lambda_1).to(device) # [dim / 2]
+        if isinstance(self.lambda_1, np.ndarray):
+            base_1 = torch.from_numpy(self.lambda_1).to(device) # [dim / 2]
+        else:
+            base_1 = self.lambda_1.to(device) # [dim / 2]
+            
         assert base_1.shape[0] == dim // 2 , f"lambda_1 error : {base_1.shape[0]}"
-        # print("base_1-orgin", base_1) # 128k 1.0-32.0
         
-        # print(base_1)
-        # dynamic:$$ 
-        base_1 = 1.0 + (base_1 - 1.0) * (seq_len - self.original_max_position_embeddings)/(self.original_max_position_embeddings* (self.scale - 1))
-        
-       
-        self.mscale = float(self._get_mscale(scaling_factor))
-        
+        self.mscale = float(self._get_mscale_su(scaling_factor))
         
         inv_freq = 1.0 / ( base_1 * ( self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)) )
         
@@ -80,5 +79,4 @@ class LlamaDynamicLongRoPEScaledRotaryEmbedding(torch.nn.Module):
                 self.cos_cached[:, :, :seq_len, ...].to(dtype=x.dtype),
                 self.sin_cached[:, :, :seq_len, ...].to(dtype=x.dtype),
             )
-        
 

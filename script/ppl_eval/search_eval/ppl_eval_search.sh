@@ -32,7 +32,7 @@ echo "dataset PG19"
 for method in "${method_list[@]}"; do
     echo "####### $method, max-tokens=$max_tokens #############"
     python evaluation/perplexity.py \
-        ${PG19}\
+        ${PG19_t}\
         --model $model \
         --method "$method" \
         --factor $((max_tokens / 4096)) \

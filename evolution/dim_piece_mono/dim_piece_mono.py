@@ -1,6 +1,6 @@
 import numpy as np
 from evaluation.perplexity import compute_perplexity
-from rope.LlamaSPIScaledRotaryEmbedding import LlamaSPIScaledRotaryEmbedding
+from rope.LlamaLongRoPEScaledRotaryEmbedding import LlamaLongRoPEScaledRotaryEmbedding
 from evolution.GeneticAlgorithm import GeneticAlgorithm
 
 
@@ -19,7 +19,7 @@ class DimPieceMonoGeneticAlgorithm(GeneticAlgorithm):
             
         for each in loaded.model.layers:
             each.self_attn.rotary_emb = \
-                LlamaSPIScaledRotaryEmbedding(dim = 128,
+                LlamaLongRoPEScaledRotaryEmbedding(dim = 128,
                     lambda_1=dim_alpha)
   
         

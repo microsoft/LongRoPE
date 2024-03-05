@@ -22,7 +22,7 @@ setting["together"]="--model ${path_dir}/LLaMA-2-7B-32K/ --method pi --factor 8.
 setting["longlora"]="--model ${path_dir}/Llama-2-7b-longlora-100k-ft/ --method pi --factor 25.0"
 
 # codellama 100k
-setting["codellama"]="--model ${path_dir}/CodeLlama-7b-hf/ --method dy_ntk --factor 1.0 --original_max_position_embeddings 4096 --max_position_embeddings 16384"
+setting["codellama"]="--model ${path_dir}/CodeLlama-7b-hf/ --method dy_ntk --factor 1.0 --original_max_position_embeddings 8192 --max_position_embeddings 16384"
 
 # yarn 64k
 setting["yarn_64k"]="--model ${path_team}/Yarn-Llama-2-7b-64k/ --method yarn --finetuned --factor 16.0"
@@ -97,7 +97,7 @@ max_tokens_list=(4096 8192 32768 65536 98304 131072)
 # done
 
 config_list=("codellama")
-# max_tokens_list=(4096 98304)
+max_tokens_list=(4096 131072)
 for config in "${config_list[@]}"; do
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"

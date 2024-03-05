@@ -186,7 +186,7 @@ def main(args):
         result = []
         for max_length in tokens:
 
-            print(model)
+            # print(model)
             config = transformers.AutoConfig.from_pretrained(model, cache_dir=args.cache_dir)
             print("config", config)
             if config.model_type == "mistral":

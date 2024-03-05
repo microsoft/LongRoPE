@@ -16,6 +16,8 @@ from attention.llama_attn_replace import replace_llama_attn, forward_llama_for_c
 import math
 import numpy as np
 
+MODEL_LAYER = 0
+MODEL_DIM = 0
 
 def load_model(model, args):
 
@@ -72,51 +74,65 @@ def load_model(model, args):
     )   
     
     # load rope_para:
+    # situation
+    # 1. non ft + use init_para
+    # 2. ft + use init_para == search twice
+    
+    
     # ft: 4k 8k 256k 512k 1024k 
-    if args.finetuned and args.method == "longrope":
-        print("args.finetuned", args.finetuned, "use rope_scale.pt")
-        if args.max_tokens != None:
-            seq_len = (args.max_tokens + 1023) // 1024
-            seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
-            for i in range(len(seq_range)-1):
-                if seq_range[i] <= seq_len <= seq_range[i+1]:   
-                    seq_len = seq_range[i+1]
-                    break
-            
-            if config.model_type == "llama":
-                model_type = "la2"
-            else:
-                raise ValueError("model_type is not llama")  
-            ft_model_len = (config.max_position_embeddings + 1023) // 1024
-
-            flag_twice = False
-            ft_model_key = None
-            
-            if seq_len == ft_model_len:
-                para_key = f"ft_{model_type}_{ft_model_len}k"
-            elif seq_len > ft_model_len:
-                para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
-                flag_twice = True
-                ft_model_key = f"ft_{model_type}_{ft_model_len}k"
-            else:
-                para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
-            
-            # 128k la2 256k
-            if para_key == '128k_la2_256k':
-                para_key = 'ft_la2_256k'
+    if args.method == "longrope":
+        if args.finetuned and not args.search_twice:
+            print("Use defaut longrope para: rope_scale-new.pt")
+            if args.max_tokens != None:
+                seq_len = (args.max_tokens + 1023) // 1024
+                seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
+                for i in range(len(seq_range)-1):
+                    if seq_range[i] <= seq_len <= seq_range[i+1]:   
+                        seq_len = seq_range[i+1]
+                        break
                 
-            rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
+                if config.model_type == "llama":
+                    model_type = "la2"
+                else:
+                    raise ValueError("model_type is not llama")  
+                ft_model_len = (config.max_position_embeddings + 1023) // 1024
+
+                flag_twice = False
+                ft_model_key = None
+                
+                if seq_len == ft_model_len:
+                    para_key = f"ft_{model_type}_{ft_model_len}k"
+                elif seq_len > ft_model_len:
+                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                    flag_twice = True
+                    ft_model_key = f"ft_{model_type}_{ft_model_len}k"
+                else:
+                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                
+                # 128k la2 256k
+                if para_key == '128k_la2_256k':
+                    para_key = 'ft_la2_256k'
+                    
+                rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
+                
+                lambda_1 = rope_rescale[para_key]
             
-            lambda_1 = rope_rescale[para_key]
+            else:
+                raise ValueError("args.max_tokens == None")  
+        
         else:
-            raise ValueError("args.max_tokens == None")  
-    elif args.method == "longrope" and not args.finetuned:
-        print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
-        # use base scale
-        lambda_1 = np.full((32, 64), 1.0)
-    else:
-        print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
-        lambda_1 = np.full((32, 64), 1.0)
+            print("Use input longrope para")
+            if args.longrope_para != None:
+                # load from .csv/.pt
+                if ".csv" in args.longrope_para:
+                    lambda_1 = np.loadtxt(open(args.longrope_init_para, "rb"), delimiter=",", skiprows=0)
+                elif ".pt" in args.longrope_para:
+                    lambda_1 = torch.load(args.longrope_init_para)
+                else:
+                    raise f"file type not support: {args.longrope_para}"
+            else:
+                # use base scale
+                lambda_1 = np.full((32, 64), 1.0)
       
     if args.method == "yarn":
         print("--use ", args.method)
@@ -222,7 +238,7 @@ def load_model(model, args):
                 each.self_attn.head_dim, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 scaling_factor=scaling_factor,
-                rope_theta=config.  
+                rope_theta=config.rope_theta  
             ) 
     elif args.method not in ["pi", "dy_ntk"]:
         raise ValueError(
@@ -243,8 +259,9 @@ def add_args(parser: ArgumentParser):
     
     # search eval
     parser.add_argument("--longrope_para", type=str, default=None)
-    parser.add_argument("--longrope_twice_para", type=str, default=None)
-
+    # parser.add_argument("--longrope_twice_para", type=str, default=None)
+    parser.add_argument("--search_twice", action="store_true")
+    
     # parser.add_argument("--tmps", type=str, default="su", help='')
     parser.add_argument("--factor", type=float)
     parser.add_argument("--finetuned", action="store_true")

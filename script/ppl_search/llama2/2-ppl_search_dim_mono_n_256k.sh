@@ -25,8 +25,8 @@ serach_method="dim_mono_n"
 python evolution/ppl_search_evolution.py \
     --model $model \
     --samples 5 \
-    --s_pi_method $serach_method \
-    --s_pi_init_para "./evolution/${serach_method}/init_alpha/${serach_method}_${max_tokens}.csv" \
+    --longrope_method $serach_method \
+    --longrope_init_para "./evolution/${serach_method}/init_alpha/${serach_method}_${max_tokens}.csv" \
     --factor $((max_tokens / 4096)) \
     --max-tokens $max_tokens \
     --min-tokens $max_tokens \

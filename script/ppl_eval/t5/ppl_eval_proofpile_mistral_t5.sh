@@ -42,7 +42,7 @@ save_memory="\
 # save_memory="" # check
 
 config_list=("base_mistral" "yarn_64k_mistral" "yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral")
-config_list=("yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral") # check
+config_list=("longrope_128k_mistral" "longrope_256k_mistral") # check
 
 echo "dataset PROOFPILE 10sample"
 max_tokens_list=(4096 8192 32768 65536 98304 131072)

@@ -92,8 +92,8 @@ def load_model(model, args):
                 model_type = "mis"
             else:
                 raise ValueError("model_type is not mistral")  
-            ft_model_len = (config.max_position_embeddings + 1023) // 1024
-
+            ft_model_len = (config.sliding_window + 1023) // 1024
+            print("config.sliding_window", config.sliding_window)
             flag_twice = False
             ft_model_key = None
             
@@ -110,7 +110,7 @@ def load_model(model, args):
             if para_key == '128k_mis_256k':
                 para_key = 'ft_mis_256k'
                 
-            rope_rescale = torch.load("./evaluation/rope_rescale.pt")
+            rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
             # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
 
             lambda_1 = rope_rescale[para_key]
@@ -168,7 +168,7 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps
+                # tmps=args.tmps
             ) 
             layer += 1
     
@@ -200,7 +200,7 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps,
+                # tmps=args.tmps,
                 start_token=args.stream,
                 cos_sin_origin=cos_sin_origin
             ) 
@@ -224,7 +224,7 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps
+                # tmps=args.tmps
             ) 
             layer += 1
 

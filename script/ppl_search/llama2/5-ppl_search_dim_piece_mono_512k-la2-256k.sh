@@ -25,10 +25,10 @@ save_memory="\
 python evolution/ppl_search_evolution.py \
     ${BOOK3_VALID_MISTRAL} \
     --model $model \
-    --s_pi_method $serach_method \
+    --longrope_method $serach_method \
     --search_twice \
     --finetuned \
-    --s_pi_init_para "./evolution/${serach_method}/init_alpha/${serach_method}_$((max_tokens / model_ft_len * 4096 )).csv" \
+    --longrope_init_para "./evolution/${serach_method}/init_alpha/${serach_method}_$((max_tokens / model_ft_len * 4096 )).csv" \
     --factor $((max_tokens / model_ft_len)) \
     --max-tokens $max_tokens \
     --min-tokens $max_tokens \

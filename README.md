@@ -2,8 +2,8 @@
 
 ## Build Environment
 - conda: needs flash-attn (cuda >= 11.7)
-  - `conda create -n scale-rope python==3.11`
-  - `conda activate scale-rope`
+  - `conda create -n longrope python==3.11`
+  - `conda activate longrope`
   - `cd s-PI`
   - `pip install -r requirements.txt`
   - ``

@@ -1,0 +1,9 @@
+seaborn
+pandas
+tensor_parallel==2.0.0
+matplotlib
+rouge_score
+
+# openai & anthropic
+tiktoken
+anthropic

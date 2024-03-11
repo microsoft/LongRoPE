@@ -26,9 +26,9 @@ echo "model:${model_ft_s_pi}"
 
 
 # proof-pile test
-# PROOFPILE_LONG_SMALL="--tokenized ${path_team}/proofpile-test-tokenized --dataset-min-tokens 262144 --samples 10 --truncate"
+PROOFPILE_LONG_SMALL="--tokenized ${path_team}/proofpile-test-tokenized --dataset-min-tokens 262144 --samples 10 --truncate"
 # PG19="--tokenized ${path_team}/pg19-test-tokenized --dataset-min-tokens 16384 --samples 5"
-BOOK3="--tokenized ${path_team}/books3-test-sampled-1024k-tokenized --dataset-min-tokens 2097152 --samples 20 --sliding-window 262144"
+# BOOK3="--tokenized ${path_team}/books3-test-sampled-1024k-tokenized --dataset-min-tokens 2097152 --samples 20 --sliding-window 262144"
 
 cache_dir="../cache_dir"
 
@@ -39,7 +39,7 @@ setting["s_pi"]="--model $model --method s_pi"
 # setting["s_pi_lora"]="--model $model --peft-model $model_lora_s_pi --method s_pi"
 setting["s_pi_ft"]="--model $model_ft_s_pi --method s_pi --finetuned "
 
-token_list=(8192 16384 32768 65536 131072 262144 524288)
+token_list=(8192 16384 32768)
 method_list=(s_pi_ft)
 for method in "${method_list[@]}"; do
     for max_tokens in "${token_list[@]}"; do

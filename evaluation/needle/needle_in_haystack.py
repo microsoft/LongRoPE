@@ -33,13 +33,19 @@ python -u needle_in_haystack.py --s_len 0 --e_len 128000\
 ) 2>&1  | tee logs/eval_llama-2-7b-80k.log
 """
 
-import tiktoken
+
 import os 
 import glob
 import json
 import tensor_parallel as tp
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from anthropic import Anthropic
+
+try:
+    import tiktoken
+    from anthropic import Anthropic
+    from openai import OpenAI
+except:
+    print("Requirement not support using API of openai & anthropic")
 #from dotenv import load_dotenv
 import numpy as np
 import argparse
@@ -48,7 +54,7 @@ import tensor_parallel as tp
 
 scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
 
-from openai import OpenAI
+
 from datetime import datetime, timezone
 import time
 import torch
@@ -159,6 +165,7 @@ class LLMNeedleHaystackTester:
             self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
                                                                 use_flash_attention_2="flash_attention_2", 
                                                                 torch_dtype=torch.bfloat16,
+                                                                device_map="auto",
                                                                 ).eval()
 
             self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)

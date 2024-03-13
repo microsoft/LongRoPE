@@ -41,15 +41,9 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         # return 0.1 * math.log(scale) + 1.0
         return math.sqrt( math.log(scale*self.original_max_position_embeddings)/math.log(self.original_max_position_embeddings) )
     
-    # def _get_mscale_yarn(self, scale=1):
-    #     if scale <= 1:
-    #         return 1.0
-    #     return 0.1 * math.log(scale) + 1.0
-        # return math.sqrt( math.log(scale*self.original_max_position_embeddings)/math.log(self.original_max_position_embeddings) )
-    
     def _set_cos_sin_cache(self, seq_len, device, dtype):
         self.max_seq_len_cached = seq_len
-
+        
         dim = self.dim
         base = self.base
         scaling_factor = max(seq_len / (1.0*self.original_max_position_embeddings), 1.0)
@@ -60,19 +54,8 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             base_1 = self.lambda_1.to(device) # [dim / 2]
             
         assert base_1.shape[0] == dim // 2 , f"lambda_1 error : {base_1.shape[0]}"
-        # print(base_1)
-        # if self.tmps == "su":
+        print("seq_len, base_1[-1]", seq_len, base_1[-1])
         self.mscale = float(self._get_mscale_su(scaling_factor))
-        # elif self.tmps == "yarn":
-        #     self.mscale = float(self._get_mscale_yarn(scaling_factor))
-        # elif self.tmps == "non":
-        #     self.mscale = 1.0
-        # else:
-        #     raise ValueError(
-        #         f"args.tmps must in [su, yarn, non]"
-        #     )
-            
-        # print("self.mscale", self.mscale)
         
         inv_freq = 1.0 / ( base_1 * ( self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)) )
         

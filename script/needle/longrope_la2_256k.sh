@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=4
 
 source ./path_teamdrive.sh
 path_dir=$path_team
@@ -27,12 +27,12 @@ python -u evaluation/needle/needle_in_haystack.py \
     --context_lengths_max 128000 \
     --context_lengths_num_intervals 40 \
     --model_provider LLaMA \
-    --model_path ${model_128} \
-    --result_path ./evaluation/needle/result/longrope_128k/ \
-    ${setting["longrope_128k"]} \
+    --model_path ${model_256} \
+    --result_path ./evaluation/needle/result/longrope_256k/ \
+    ${setting["longrope_256k"]} \
     --flash_attn \
     --max_tokens 128000
 
-) 2>&1  | tee -a evaluation/needle/logs/eval_longrope_128k.log
+) 2>&1  | tee -a evaluation/needle/logs/eval_longrope_256k.log
 
 # python evaluation/needle/visualize.py 

@@ -252,6 +252,7 @@ def load_model(model, args):
 
 
 def add_args(parser: ArgumentParser):
+    parser.add_argument("-m", "--model", action="append", nargs="+")
     
     parser.add_argument("--max_position_embeddings", type=int)
     parser.add_argument("--original_max_position_embeddings", type=int, default=4096)
@@ -262,10 +263,8 @@ def add_args(parser: ArgumentParser):
     
     # search eval
     parser.add_argument("--longrope_para", type=str, default=None)
-    # parser.add_argument("--longrope_twice_para", type=str, default=None)
     parser.add_argument("--search_twice", action="store_true")
     
-    # parser.add_argument("--tmps", type=str, default="su", help='')
     parser.add_argument("--factor", type=float)
     parser.add_argument("--finetuned", action="store_true")
     

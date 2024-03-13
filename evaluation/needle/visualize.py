@@ -7,13 +7,14 @@ import pandas as pd
 import json
 import glob
 
-FOLDER_PATH = "results/llama-2-7b-80k/"
-MODEL_NAME = "LLaMA 2 7B continue-trained on 5B tokens 80K length Per-source length upsampled data"
-PRETRAINED_LEN=81920
+FOLDER_PATH = "./evaluation/needle/"
+
+MODEL_NAME = "LLaMA_2_7B_8k"
+PRETRAINED_LEN=4096
 
 def main():
     # Path to the directory containing JSON results
-    folder_path = FOLDER_PATH
+    folder_path = FOLDER_PATH + "result/"
     if("/" in folder_path):
         model_name = folder_path.split("/")[-2]
     else: model_name = MODEL_NAME
@@ -44,9 +45,11 @@ def main():
                 "Context Length": context_length,
                 "Score": score
             })
+            print("context_length", context_length)
 
     # Creating a DataFrame
     df = pd.DataFrame(data)
+    print(df["Context Length"])
     locations = list(df["Context Length"].unique())
     locations.sort()
     for li, l in enumerate(locations):
@@ -88,7 +91,7 @@ def main():
     # Add a vertical line at the desired column index
     plt.axvline(x=pretrained_len + 0.8, color='white', linestyle='--', linewidth=4)
 
-    save_path = "img/%s.png" % model_name
+    save_path = f"{FOLDER_PATH}img/%s.png" % model_name
     print("saving at %s" % save_path)
     plt.savefig(save_path, dpi=150)
 

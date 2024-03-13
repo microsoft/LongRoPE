@@ -3,7 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-
+contexts/*
+evaluation/needle/result/*
+evaluation/needle/results/*
 evaluation/result/*
 
 # User-specific files

@@ -194,10 +194,10 @@ class LLMNeedleHaystackTester:
                     raise ValueError("Model type did not support!")
             else:
                 self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
-                                                                use_flash_attention_2="flash_attention_2", 
-                                                                torch_dtype=torch.bfloat16,
-                                                                device_map="auto",
-                                                                ).eval()
+                    use_flash_attention_2="flash_attention_2", 
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                    ).eval()
 
             self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
         else: 
@@ -228,7 +228,8 @@ class LLMNeedleHaystackTester:
         # Run through each iteration of context_lengths and depths
         tasks = []
         for context_length in self.context_lengths:
-            if context_length < args.s_len or context_length > args.e_len: continue
+            if context_length < args.s_len or context_length > args.e_len: 
+                continue
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
@@ -292,12 +293,33 @@ class LLMNeedleHaystackTester:
             print("end tokenizer")
             
             input_ids = prompt['input_ids'].to(self.model_to_test.device)
-            # change
-            print("begin generate")
+            
+            print("begin generate, context_length", context_length)
+            # # change
+            # if self.args_rope.method == "longrope":
+            #     # diff seq
+            #     self.args_rope.max_tokens = context_length
+            #     config = AutoConfig.from_pretrained(model_name)
+            #     print("config", config)
+            #     if config.model_type == "mistral":
+            #         print(model_name)
+            #         from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
+            #         self.model_to_test, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
+            #     elif config.model_type == "llama":
+            #         print(model_name)
+            #         from evaluation.model_loader_llama import load_model_and_apply_patches
+            #         self.model_to_test, _ = load_model_and_apply_patches(model_name, self.args_rope)
+            #     else:
+            #         raise ValueError("Model type did not support!")
+                
+            #     self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+            
+            
             with torch.no_grad():
                 output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
                 response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
             print("end generate")
+                
 
         test_end_time = time.time()
         test_elapsed_time = test_end_time - test_start_time

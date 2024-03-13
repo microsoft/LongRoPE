@@ -7,23 +7,26 @@ import pandas as pd
 import json
 import glob
 
-FOLDER_PATH = "./evaluation/needle/"
+FOLDER_PATH = "./evaluation/needle/result/"
+LOG_PATH = "longrope_128k"
+# LOG_PATH = "la2"
 
-MODEL_NAME = "LLaMA_2_7B_8k"
+MODEL_NAME = LOG_PATH
 PRETRAINED_LEN=4096
 
 def main():
     # Path to the directory containing JSON results
-    folder_path = FOLDER_PATH + "result/"
-    if("/" in folder_path):
-        model_name = folder_path.split("/")[-2]
-    else: model_name = MODEL_NAME
+    folder_path = FOLDER_PATH + LOG_PATH + "/"
+    # if("/" in folder_path):
+    #     model_name = folder_path.split("/")[-2]
+    # else: 
+    model_name = MODEL_NAME
     print("model_name = %s" % model_name)
 
     # Using glob to find all json files in the directory
     json_files = glob.glob(f"{folder_path}*.json")
     # import ipdb; ipdb.set_trace()
-
+    # print(json_files)
     # List to hold the data
     data = []
 
@@ -49,6 +52,7 @@ def main():
 
     # Creating a DataFrame
     df = pd.DataFrame(data)
+    print(df)
     print(df["Context Length"])
     locations = list(df["Context Length"].unique())
     locations.sort()

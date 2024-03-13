@@ -137,6 +137,7 @@ def load_model(model, args):
         # use base scale
         lambda_1 = np.full((32, 64), 1.0)
         
+    print("lambda_1 in model load ......", lambda_1)
     if args.method == "yarn":
         print("--use ", args.method)
         from rope.LlamaYaRNScaledRotaryEmbedding import LlamaYaRNScaledRotaryEmbedding

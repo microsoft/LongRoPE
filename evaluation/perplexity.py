@@ -227,7 +227,7 @@ def main(args):
 if __name__ == "__main__":
     warnings.simplefilter("ignore")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", action="append", nargs="+")
+    # parser.add_argument("-m", "--model", action="append", nargs="+")
     parser.add_argument("-d", "--dataset", type=str)
     parser.add_argument("-s", "--subset", type=str)
     parser.add_argument("-f", "--feature", type=str)

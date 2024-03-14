@@ -137,6 +137,7 @@ def load_model(model, args):
         # use base scale
         lambda_1 = np.full((32, 64), 1.0)
         
+    print("lambda_1 in model load ......", lambda_1)
     if args.method == "yarn":
         print("--use ", args.method)
         from rope.LlamaYaRNScaledRotaryEmbedding import LlamaYaRNScaledRotaryEmbedding
@@ -252,6 +253,7 @@ def load_model(model, args):
 
 
 def add_args(parser: ArgumentParser):
+    parser.add_argument("-m", "--model", action="append", nargs="+")
     
     parser.add_argument("--max_position_embeddings", type=int)
     parser.add_argument("--original_max_position_embeddings", type=int, default=4096)
@@ -262,10 +264,8 @@ def add_args(parser: ArgumentParser):
     
     # search eval
     parser.add_argument("--longrope_para", type=str, default=None)
-    # parser.add_argument("--longrope_twice_para", type=str, default=None)
     parser.add_argument("--search_twice", action="store_true")
     
-    # parser.add_argument("--tmps", type=str, default="su", help='')
     parser.add_argument("--factor", type=float)
     parser.add_argument("--finetuned", action="store_true")
     

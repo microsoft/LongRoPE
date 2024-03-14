@@ -38,19 +38,25 @@ import os
 import glob
 import json
 import tensor_parallel as tp
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
 try:
     import tiktoken
     from anthropic import Anthropic
     from openai import OpenAI
 except:
-    print("Requirement not support using API of openai & anthropic")
+    print("!! Requirement not support using API of openai & anthropic.\n if you want, please `pip install openai tiktoken anthropic`")
 #from dotenv import load_dotenv
 import numpy as np
 import argparse
 from rouge_score import rouge_scorer
 import tensor_parallel as tp
+
+import sys
+current_path = os.getcwd()
+sys.path.append(current_path)
+print(current_path)
+
 
 scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
 
@@ -85,9 +91,14 @@ class LLMNeedleHaystackTester:
                  num_concurrent_requests = 1,
                  save_results = True,
                  save_contexts = True,
+                 result_path = 'result',
+                 use_cache = False,
                  final_context_length_buffer = 200,
                  seconds_to_sleep_between_completions = None,
-                 print_ongoing_status = True):
+                 print_ongoing_status = True,
+                 args_rope = None,
+                 
+                 ):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
         :param haystack_dir: The directory of text files to use as background context (or a haystack) in which the needle is to be found. Default is Paul Graham Essays.
@@ -96,6 +107,7 @@ class LLMNeedleHaystackTester:
         :param num_concurrent_requests: Due to volume, this object is set up to run concurrent requests, default = 1. Be careful of rate limits.
         :param save_results: Whether or not you would like to save your contexts to file. Warning: These will get long! Default = True
         :param save_contexts: Whether or not you would like to save your contexts to file. Warning: These will get long! Default is True.
+        :param save_contexts: choose a path to save result.
         :param final_context_length_buffer: The amount of cushion you'd like to leave off the input context to allow for the output context. Default 200 tokens
         :param context_lengths_min: The minimum length of the context. Default is 1000.
         :param context_lengths_max: The maximum length of the context. Default is 200000.
@@ -124,10 +136,14 @@ class LLMNeedleHaystackTester:
         self.save_results = save_results
         self.final_context_length_buffer = final_context_length_buffer
         self.save_contexts = save_contexts
+        self.result_path = result_path
+        self.use_cache = use_cache
         self.seconds_to_sleep_between_completions = seconds_to_sleep_between_completions
         self.print_ongoing_status = print_ongoing_status
         self.model_provider = model_provider
         self.testing_results = []
+        
+        self.args_rope = args_rope
 
         if("/" in model_name):
             self.model_version = model_name.split("/")[-1]
@@ -159,14 +175,29 @@ class LLMNeedleHaystackTester:
         self.model_name = model_name
 
         if(self.model_provider not in ["OpenAI", "Anthropic"]):
-            self.enc = AutoTokenizer.from_pretrained(model_name)
+            self.enc = AutoTokenizer.from_pretrained(model_name, use_fast = True )
             print("loading from %s" % model_name)
 
-            self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
-                                                                use_flash_attention_2="flash_attention_2", 
-                                                                torch_dtype=torch.bfloat16,
-                                                                device_map="auto",
-                                                                ).eval()
+            if self.args_rope.method == "longrope":
+                
+                config = AutoConfig.from_pretrained(model_name)
+                print("config", config)
+                if config.model_type == "mistral":
+                    print(model_name)
+                    from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
+                    self.model_to_test, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
+                elif config.model_type == "llama":
+                    print(model_name)
+                    from evaluation.model_loader_llama import load_model_and_apply_patches
+                    self.model_to_test, _ = load_model_and_apply_patches(model_name, self.args_rope)
+                else:
+                    raise ValueError("Model type did not support!")
+            else:
+                self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
+                    use_flash_attention_2="flash_attention_2", 
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                    ).eval()
 
             self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
         else: 
@@ -197,7 +228,8 @@ class LLMNeedleHaystackTester:
         # Run through each iteration of context_lengths and depths
         tasks = []
         for context_length in self.context_lengths:
-            if context_length < args.s_len or context_length > args.e_len: continue
+            if context_length < args.s_len or context_length > args.e_len: 
+                continue
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
@@ -237,10 +269,12 @@ class LLMNeedleHaystackTester:
                 return
             else:
                 print("result does not exist, testing")
-
+                
+        print("begin generate_context")
         # Go generate the required length context and place your needle statement in
         context = self.generate_context(context_length, depth_percent)
 
+        print("begin generate_prompt")
         # Prepare your message to send to the model you're going to evaluate
         prompt = self.generate_prompt(context)
         test_start_time = time.time()
@@ -254,12 +288,38 @@ class LLMNeedleHaystackTester:
             )
             response = response.choices[0].message.content
         else:
+            print("begin tokenizer")
             prompt = self.enc(prompt, return_tensors="pt")
+            print("end tokenizer")
+            
             input_ids = prompt['input_ids'].to(self.model_to_test.device)
-            # change
+            
+            print("begin generate, context_length", context_length)
+            # # change
+            # if self.args_rope.method == "longrope":
+            #     # diff seq
+            #     self.args_rope.max_tokens = context_length
+            #     config = AutoConfig.from_pretrained(model_name)
+            #     print("config", config)
+            #     if config.model_type == "mistral":
+            #         print(model_name)
+            #         from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
+            #         self.model_to_test, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
+            #     elif config.model_type == "llama":
+            #         print(model_name)
+            #         from evaluation.model_loader_llama import load_model_and_apply_patches
+            #         self.model_to_test, _ = load_model_and_apply_patches(model_name, self.args_rope)
+            #     else:
+            #         raise ValueError("Model type did not support!")
+                
+            #     self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+            
+            
             with torch.no_grad():
-                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50)
+                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
                 response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
+            print("end generate")
+                
 
         test_end_time = time.time()
         test_elapsed_time = test_end_time - test_start_time
@@ -305,14 +365,15 @@ class LLMNeedleHaystackTester:
             
         if self.save_results:
             # Save the context to file for retesting
-            if not os.path.exists('results'):
-                os.makedirs('results')
             
-            if not os.path.exists(f'results/{self.model_version}'):
-                os.makedirs(f'results/{self.model_version}')
+            if not os.path.exists(self.result_path):
+                os.makedirs(self.result_path)
+            
+            if not os.path.exists(f'{self.result_path}/{self.model_version}'):
+                os.makedirs(f'{self.result_path}/{self.model_version}')
 
             # Save the result to file for retesting
-            p = f'results/{self.model_version}/{context_file_location}_results.json'
+            p = f'{self.result_path}/{self.model_version}/{context_file_location}_results.json'
             print("Writing at %s" % p)
             with open(p, 'w') as f:
                 json.dump(results, f)
@@ -418,8 +479,13 @@ class LLMNeedleHaystackTester:
     def read_context_files(self):
         context = ""
         max_context_length = max(self.context_lengths)
-
+        
+        try_read_context_files = 0
         while self.get_context_length_in_tokens(context) < max_context_length:
+            try_read_context_files += 1
+            print("try_read_context_files", try_read_context_files)
+            print("curr len:", self.get_context_length_in_tokens(context))
+            
             for file in glob.glob(f"{self.haystack_dir}/*.txt"):
                 with open(file, 'r') as f:
                     context += f.read()
@@ -465,7 +531,10 @@ class LLMNeedleHaystackTester:
         if self.print_ongoing_status:
             self.print_start_test_summary()
         #asyncio.run(self.run_test())
+        total_start_time = time.time()
         self.run_test(args)
+        total_end_time = time.time()
+        print("Total time:", total_end_time -total_start_time)
 
 
 if __name__ == "__main__":
@@ -478,7 +547,23 @@ if __name__ == "__main__":
     parser.add_argument('--model_name_suffix', type=str, default=None, help='name of model')
     parser.add_argument('--model_provider', type=str, default="LLaMA", help='which model to use')
     parser.add_argument('--api_key', type=str, default="", help='OpenAI API Key')
-    # parser = add_args(parser)
+    
+    # parser.add_argument('--use_cache', type=bool, default=False, help='use KV cache')
+    parser.add_argument('--context_lengths_max', type=int, default=128000, help='max context lengths')
+    parser.add_argument('--context_lengths_min', type=int, default=2048, help='min context lengths')
+    parser.add_argument('--context_lengths_num_intervals', type=int, default=40, help='context_lengths_num_intervals')
+    
+    parser.add_argument('--haystack_dir', type=str, default="./evaluation/needle/PaulGrahamEssays", help='path to PaulGrahamEssays')
+    parser.add_argument('--result_path', type=str, default="./evaluation/needle/result", help='path to result output')
+    
+    parser.add_argument("--max_tokens", type=int, default=8192)
+    # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
+    #                     )
+    
+    from evaluation.model_loader_llama import add_args
+    # parser= argparse.ArgumentParser()
+    parser = add_args(parser)
+    
     args = parser.parse_args()
 
     if(args.model_path is not None):
@@ -493,7 +578,14 @@ if __name__ == "__main__":
                                  model_provider=args.model_provider,
                                  save_contexts=True,
                                  save_results=True,
-                                 openai_api_key=args.api_key
+                                 openai_api_key= args.api_key,
+                                 context_lengths_min= args.context_lengths_min,
+                                 context_lengths_max= args.context_lengths_max,
+                                 haystack_dir = args.haystack_dir,
+                                 result_path = args.result_path,
+                                 use_cache = args.use_cache,
+                                 context_lengths_num_intervals = args.context_lengths_num_intervals,
+                                 args_rope = args,
                                  )
 
     ht.start_test(args)

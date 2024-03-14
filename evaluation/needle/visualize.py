@@ -7,22 +7,26 @@ import pandas as pd
 import json
 import glob
 
-FOLDER_PATH = "results/llama-2-7b-80k/"
-MODEL_NAME = "LLaMA 2 7B continue-trained on 5B tokens 80K length Per-source length upsampled data"
-PRETRAINED_LEN=81920
+FOLDER_PATH = "./evaluation/needle/result/"
+LOG_PATH = "longrope_128k"
+# LOG_PATH = "la2"
+
+MODEL_NAME = LOG_PATH
+PRETRAINED_LEN=4096
 
 def main():
     # Path to the directory containing JSON results
-    folder_path = FOLDER_PATH
-    if("/" in folder_path):
-        model_name = folder_path.split("/")[-2]
-    else: model_name = MODEL_NAME
+    folder_path = FOLDER_PATH + LOG_PATH + "/"
+    # if("/" in folder_path):
+    #     model_name = folder_path.split("/")[-2]
+    # else: 
+    model_name = MODEL_NAME
     print("model_name = %s" % model_name)
 
     # Using glob to find all json files in the directory
     json_files = glob.glob(f"{folder_path}*.json")
     # import ipdb; ipdb.set_trace()
-
+    # print(json_files)
     # List to hold the data
     data = []
 
@@ -44,9 +48,12 @@ def main():
                 "Context Length": context_length,
                 "Score": score
             })
+            print("context_length", context_length)
 
     # Creating a DataFrame
     df = pd.DataFrame(data)
+    print(df)
+    print(df["Context Length"])
     locations = list(df["Context Length"].unique())
     locations.sort()
     for li, l in enumerate(locations):
@@ -88,7 +95,7 @@ def main():
     # Add a vertical line at the desired column index
     plt.axvline(x=pretrained_len + 0.8, color='white', linestyle='--', linewidth=4)
 
-    save_path = "img/%s.png" % model_name
+    save_path = f"{FOLDER_PATH}img/%s.png" % model_name
     print("saving at %s" % save_path)
     plt.savefig(save_path, dpi=150)
 

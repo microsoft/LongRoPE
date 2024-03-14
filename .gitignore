@@ -3,6 +3,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# cube result
+cube_graph.pt
+fullmodel.pt.*
+gencode*.py
+dist_param_map.pt
 
 evaluation/result/*
 

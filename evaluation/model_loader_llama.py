@@ -113,6 +113,7 @@ def load_model(model, args):
                 if para_key == '128k_la2_256k':
                     para_key = 'ft_la2_256k'
                     
+                print("args.max_tokens", args.max_tokens, "para_key", para_key)
                 rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
                 
                 lambda_1 = rope_rescale[para_key]
@@ -277,6 +278,11 @@ def add_args(parser: ArgumentParser):
     
     parser.add_argument("--start_token", type=int, default=0)
     parser.add_argument("--peft_model", type=str)
+    
+    
+    # mistral max context window
+    parser.add_argument("--sliding_window_attention", type=int)
+    
     
     # use KV cache
     parser.add_argument("--use_cache", action="store_true")

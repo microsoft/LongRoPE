@@ -7,8 +7,12 @@ import pandas as pd
 import json
 import glob
 
-FOLDER_PATH = "./evaluation/needle/result/"
-LOG_PATH = "longrope_128k"
+FOLDER_PATH = "./evaluation/needle/"
+# LOG_PATH = "longlora-100k"
+# LOG_PATH = "longrope_128k_static"
+# LOG_PATH = "longrope_256k"
+# LOG_PATH = "longrope_128k"
+LOG_PATH = "longrope_mis_128k"
 # LOG_PATH = "la2"
 
 MODEL_NAME = LOG_PATH
@@ -16,7 +20,7 @@ PRETRAINED_LEN=4096
 
 def main():
     # Path to the directory containing JSON results
-    folder_path = FOLDER_PATH + LOG_PATH + "/"
+    folder_path = FOLDER_PATH + "result/" + LOG_PATH + "/"
     # if("/" in folder_path):
     #     model_name = folder_path.split("/")[-2]
     # else: 

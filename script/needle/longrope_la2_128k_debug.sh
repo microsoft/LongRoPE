@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=0
 
 source ./path_teamdrive.sh
 path_dir=$path_team
@@ -17,24 +17,28 @@ setting["longrope_128k"]="-m ${model_128} --method longrope --finetuned --factor
 # longrope 256k
 setting["longrope_256k"]="-m ${model_256} --method longrope --finetuned --factor 64.0"
 
+setting["base"]="--model ${path_team}/Llama-2-7b-hf/"
+base=${path_team}/Llama-2-7b-hf/
+
+name=longrope_128k
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
-
-rm ./evaluation/needle/result/longrope_256k/*
+rm ./evaluation/needle/result/longrope_128k_load/*
 
 (
 python -u evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 128000 \
     --context_lengths_min 1024 \
     --context_lengths_max 128000 \
-    --context_lengths_num_intervals 40 \
+    --context_lengths_num_intervals 5 \
+    --document_depth_percent_intervals 1 \
     --model_provider LLaMA \
-    --model_path ${model_256} \
-    --result_path ./evaluation/needle/result/longrope_256k/ \
-    ${setting["longrope_256k"]} \
+    --model_path ${model_128} \
+    --result_path ./evaluation/needle/result/${name}_debug/ \
+    ${setting[${name}]} \
     --flash_attn \
     --max_tokens 4000 \
 
-) 2>&1  | tee evaluation/needle/logs/eval_longrope_256k.log
+) 2>&1  | tee evaluation/needle/logs/eval_${name}_debug.log
 
 # python evaluation/needle/visualize.py 

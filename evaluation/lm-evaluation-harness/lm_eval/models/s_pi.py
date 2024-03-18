@@ -101,16 +101,17 @@ class sPiAutoLM(AutoCausalLM):
 
         torch.cuda.empty_cache()
 
+        print("$load")
         if "Mistral" in model or "mistral" in model:
             print(model)
             sys.path.append("/app/s-PI")
             from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
-            self.model = load_model_and_apply_patches_mistral(model, args)
+            self.model, _ = load_model_and_apply_patches_mistral(model, args)
         else:
             print(model)
             sys.path.append("/app/s-PI")
-            from evaluation.model_loader_2 import load_model_and_apply_patches
-            self.model = load_model_and_apply_patches(model, args)
+            from evaluation.model_loader_llama import load_model_and_apply_patches
+            self.model, _ = load_model_and_apply_patches(model, args)
         
         self.model.eval()
         torch.set_grad_enabled(False)

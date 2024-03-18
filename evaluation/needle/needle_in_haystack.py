@@ -178,28 +178,42 @@ class LLMNeedleHaystackTester:
             self.enc = AutoTokenizer.from_pretrained(model_name, use_fast = True )
             print("loading from %s" % model_name)
 
-            if self.args_rope.method == "longrope":
-                
-                config = AutoConfig.from_pretrained(model_name)
-                print("config", config)
-                if config.model_type == "mistral":
-                    print(model_name)
-                    from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
-                    self.model_to_test, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
-                elif config.model_type == "llama":
-                    print(model_name)
-                    from evaluation.model_loader_llama import load_model_and_apply_patches
-                    self.model_to_test, _ = load_model_and_apply_patches(model_name, self.args_rope)
-                else:
-                    raise ValueError("Model type did not support!")
-            else:
+            # self.model_to_test = None
+            if self.args_rope.method != "longrope":
+                # default setting
                 self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
                     use_flash_attention_2="flash_attention_2", 
                     torch_dtype=torch.bfloat16,
                     device_map="auto",
                     ).eval()
 
-            self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+                self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+
+            # compute_perplexity
+            # longlora-100k
+ 
+            
+            # "--tokenized ${/mnt/yiran/teamdrive3/ExtendSeqLen}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 10 --truncate"
+            # import datasets
+            # input_texts = datasets.load_from_disk("/mnt/yiran/teamdrive3/ExtendSeqLen/proofpile-test-tokenized")
+            
+            # input_texts = input_texts.filter(
+            #     lambda x: x["tokenized_len"] >= 131072)
+            
+            # input_texts = input_texts[ :10 ]
+            # tokenizer=AutoTokenizer.from_pretrained(self.model_name, use_fast = True )
+            # from evaluation.perplexity import compute_perplexity
+            # max_length = 8192
+            # print("self.model_to_test", self.model_to_test)
+            # ppl = compute_perplexity(
+            #     model=self.model_to_test, tokenizer=tokenizer, encodings=input_texts,
+            #     add_start_token=tokenizer.bos_token is not None, max_length=max_length,
+            #     sliding_window=256, truncate=True,
+            #     use_cache=False
+            #     )['mean_perplexity']
+            # print(f"$max_length {max_length} ppl {ppl}")
+            # exit(0)
+        
         else: 
             self.model_to_test = OpenAI(api_key=openai_api_key)
             if(self.model_provider == "OpenAI"):
@@ -230,6 +244,33 @@ class LLMNeedleHaystackTester:
         for context_length in self.context_lengths:
             if context_length < args.s_len or context_length > args.e_len: 
                 continue
+            
+            # load model
+            # change
+            if self.args_rope.method == "longrope":
+                # diff seq
+                # self.args_rope.max_tokens = context_length
+                self.args_rope.max_tokens = 128000
+                
+                config = AutoConfig.from_pretrained(model_name)
+                # print("config", config)
+                if config.model_type == "mistral":
+                    print(model_name)
+                    from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
+                    loaded, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
+                    self.model_to_test = loaded.eval()
+                    
+                elif config.model_type == "llama":
+                    print(model_name)
+                    from evaluation.model_loader_llama import load_model_and_apply_patches
+                    loaded, _ = load_model_and_apply_patches(model_name, self.args_rope)
+                    self.model_to_test = loaded.eval()
+                    
+                else:
+                    raise ValueError("Model type did not support!")
+                
+                self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+        
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
@@ -277,6 +318,7 @@ class LLMNeedleHaystackTester:
         print("begin generate_prompt")
         # Prepare your message to send to the model you're going to evaluate
         prompt = self.generate_prompt(context)
+        print(prompt)
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):
             # import ipdb; ipdb.set_trace()
@@ -289,30 +331,19 @@ class LLMNeedleHaystackTester:
             response = response.choices[0].message.content
         else:
             print("begin tokenizer")
+            # print("prompt[:, -100:]", prompt[-100:])
             prompt = self.enc(prompt, return_tensors="pt")
             print("end tokenizer")
             
             input_ids = prompt['input_ids'].to(self.model_to_test.device)
+            if input_ids[0, -1] == self.enc.eos_token_id:
+                input_ids = input_ids[:, :-1]
+            
+            print("input_ids[:, -5:]", input_ids[:, -5:])
             
             print("begin generate, context_length", context_length)
-            # # change
-            # if self.args_rope.method == "longrope":
-            #     # diff seq
-            #     self.args_rope.max_tokens = context_length
-            #     config = AutoConfig.from_pretrained(model_name)
-            #     print("config", config)
-            #     if config.model_type == "mistral":
-            #         print(model_name)
-            #         from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
-            #         self.model_to_test, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
-            #     elif config.model_type == "llama":
-            #         print(model_name)
-            #         from evaluation.model_loader_llama import load_model_and_apply_patches
-            #         self.model_to_test, _ = load_model_and_apply_patches(model_name, self.args_rope)
-            #     else:
-            #         raise ValueError("Model type did not support!")
-                
-            #     self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+            
+            # test ppl
             
             
             with torch.no_grad():
@@ -395,7 +426,7 @@ class LLMNeedleHaystackTester:
                     depth_percent_met = result['depth_percent'] == depth_percent
                     version_met = result.get('version', 1) == self.results_version
                     model_met = result['model'] == self.model_name
-                    # import ipdb; ipdb.set_trace()
+                    
                     if context_length_met and depth_percent_met and version_met and model_met:
                         return True
         return False
@@ -427,6 +458,11 @@ class LLMNeedleHaystackTester:
         tokens_needle = self.encode_text_to_tokens(self.needle)
         tokens_context = self.encode_text_to_tokens(context)
 
+        print("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+        if tokens_needle[-1] == self.enc.eos_token_id:
+            tokens_needle = tokens_needle[:-1]
+        print("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+        
         # Reducing the context length by 150 buffer. This is to account for system message, the user question, and response.
         context_length -= self.final_context_length_buffer
 
@@ -552,9 +588,10 @@ if __name__ == "__main__":
     parser.add_argument('--context_lengths_max', type=int, default=128000, help='max context lengths')
     parser.add_argument('--context_lengths_min', type=int, default=2048, help='min context lengths')
     parser.add_argument('--context_lengths_num_intervals', type=int, default=40, help='context_lengths_num_intervals')
+    parser.add_argument('--document_depth_percent_intervals', type=int, default=10, help='document_depth_percent_intervals')
     
     parser.add_argument('--haystack_dir', type=str, default="./evaluation/needle/PaulGrahamEssays", help='path to PaulGrahamEssays')
-    parser.add_argument('--result_path', type=str, default="./evaluation/needle/result", help='path to result output')
+    parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
     
     parser.add_argument("--max_tokens", type=int, default=8192)
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
@@ -581,6 +618,7 @@ if __name__ == "__main__":
                                  openai_api_key= args.api_key,
                                  context_lengths_min= args.context_lengths_min,
                                  context_lengths_max= args.context_lengths_max,
+                                 document_depth_percent_intervals=args.document_depth_percent_intervals, 
                                  haystack_dir = args.haystack_dir,
                                  result_path = args.result_path,
                                  use_cache = args.use_cache,

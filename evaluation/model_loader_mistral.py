@@ -109,7 +109,8 @@ def load_model(model, args):
             # 128k la2 256k
             if para_key == '128k_mis_256k':
                 para_key = 'ft_mis_256k'
-                
+            if para_key in ['16k_mis_128k', '32k_mis_128k', '16k_mis_256k', '32k_mis_256k']:
+                para_key = 'ft_mis_128k'
             rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
             # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
 

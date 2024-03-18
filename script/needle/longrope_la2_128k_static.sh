@@ -19,22 +19,22 @@ setting["longrope_256k"]="-m ${model_256} --method longrope --finetuned --factor
 
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
-
-rm ./evaluation/needle/result/longrope_256k/*
+rm ./evaluation/needle/result/longrope_128k_static/*
 
 (
 python -u evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 128000 \
     --context_lengths_min 1024 \
     --context_lengths_max 128000 \
-    --context_lengths_num_intervals 40 \
+    --context_lengths_num_intervals 5 \
+    --document_depth_percent_intervals 5 \
     --model_provider LLaMA \
-    --model_path ${model_256} \
-    --result_path ./evaluation/needle/result/longrope_256k/ \
-    ${setting["longrope_256k"]} \
+    --model_path ${model_128} \
+    --result_path ./evaluation/needle/result/longrope_128k_static/ \
+    ${setting["longrope_128k"]} \
     --flash_attn \
-    --max_tokens 4000 \
+    --max_tokens 128000 \
 
-) 2>&1  | tee evaluation/needle/logs/eval_longrope_256k.log
+) 2>&1  | tee evaluation/needle/logs/eval_longrope_128k_static.log
 
 # python evaluation/needle/visualize.py 

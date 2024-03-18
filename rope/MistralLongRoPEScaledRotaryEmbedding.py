@@ -54,7 +54,7 @@ class MistralLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             base_1 = self.lambda_1.to(device) # [dim / 2]
             
         assert base_1.shape[0] == dim // 2 , f"lambda_1 error : {base_1.shape[0]}"
-        
+        print("seq_len, base_1[-1]", seq_len, base_1[-1])
         self.mscale = float(self._get_mscale_su(scaling_factor))
         
         inv_freq = 1.0 / ( base_1 * ( self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)) )

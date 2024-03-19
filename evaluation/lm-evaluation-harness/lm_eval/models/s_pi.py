@@ -28,16 +28,17 @@ class Args:
         cache_dir=None,
         flash_attn=True,
         method="pi",
-        s_pi_para="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv",
+        longrope_para=None,
         tmps="su",
         factor=None,
         finetuned=False,
         stream=0,
         peft_model=None,
         use_cache=False,
+        max_tokens=4000,
         aggressive_mem_causal_lm=False,
         aggressive_mem_decoder=False,
-        aggressive_mem_attn=False
+        aggressive_mem_attn=False,
     ):
         self.model = [model]
         self.feature = feature
@@ -49,7 +50,7 @@ class Args:
         self.cache_dir = cache_dir
         self.flash_attn = flash_attn
         self.method = method
-        self.s_pi_para = s_pi_para
+        self.longrope_para = longrope_para
         self.tmps = tmps
         self.factor = factor
         self.finetuned = finetuned
@@ -59,7 +60,7 @@ class Args:
         self.aggressive_mem_causal_lm = aggressive_mem_causal_lm
         self.aggressive_mem_decoder = aggressive_mem_decoder
         self.aggressive_mem_attn = aggressive_mem_attn
-
+        self.max_tokens = max_tokens
 
 class sPiAutoLM(AutoCausalLM):
     AUTO_TOKENIZER_CLASS = transformers.AutoTokenizer
@@ -77,23 +78,26 @@ class sPiAutoLM(AutoCausalLM):
         cache_dir=None,
         flash_attn=True,
         method="pi",
-        s_pi_para="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv",
+        longrope_para=None,
         tmps="su",
         factor=None,
         finetuned=False,
         stream=0,
         peft_model=None,
         use_cache=False,
+        max_tokens=4000,
         device="cuda:0"
     ):
         super().__init__(pretrained=model, batch_size=batch_size)
-        
+        print("finetuned", finetuned)
+        print("max_tokens", max_tokens)
         args = Args(
             model, feature, aggressive_memory, original_max_position_embeddings, sliding_window_attention,
-            small_scale, max_position_embeddings, cache_dir, flash_attn, method, s_pi_para, tmps, factor,
-            finetuned, stream, peft_model, use_cache
+            small_scale, max_position_embeddings, cache_dir, flash_attn, method, longrope_para, tmps, factor,
+            finetuned, stream, peft_model, use_cache, max_tokens
         )
-
+        
+        print("args")
         self.tokenizer = self.AUTO_TOKENIZER_CLASS.from_pretrained(
             model, model_max_length=sys.maxsize, trust_remote_code=True, use_fast = False)
         
@@ -104,12 +108,12 @@ class sPiAutoLM(AutoCausalLM):
         print("$load")
         if "Mistral" in model or "mistral" in model:
             print(model)
-            sys.path.append("/app/s-PI")
+            sys.path.append("/mnt/yiran/LongRoPE")
             from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
             self.model, _ = load_model_and_apply_patches_mistral(model, args)
         else:
             print(model)
-            sys.path.append("/app/s-PI")
+            sys.path.append("/mnt/yiran/LongRoPE")
             from evaluation.model_loader_llama import load_model_and_apply_patches
             self.model, _ = load_model_and_apply_patches(model, args)
         

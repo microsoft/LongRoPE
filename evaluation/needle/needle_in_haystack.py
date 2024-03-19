@@ -97,7 +97,7 @@ class LLMNeedleHaystackTester:
                  seconds_to_sleep_between_completions = None,
                  print_ongoing_status = True,
                  args_rope = None,
-                 
+                 prompt_template="base",
                  ):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
@@ -144,7 +144,7 @@ class LLMNeedleHaystackTester:
         self.testing_results = []
         
         self.args_rope = args_rope
-
+        self.prompt_template = prompt_template
         if("/" in model_name):
             self.model_version = model_name.split("/")[-1]
         else: self.model_version = model_name
@@ -249,8 +249,8 @@ class LLMNeedleHaystackTester:
             # change
             if self.args_rope.method == "longrope":
                 # diff seq
-                # self.args_rope.max_tokens = context_length
-                self.args_rope.max_tokens = 128000
+                self.args_rope.max_tokens = context_length
+                # self.args_rope.max_tokens = 128000
                 
                 config = AutoConfig.from_pretrained(model_name)
                 # print("config", config)
@@ -277,30 +277,54 @@ class LLMNeedleHaystackTester:
     def generate_prompt(self, context):
         # Generate the prompt for the Anthropic model
         # Replace the following line with the appropriate prompt structure
-        if(self.model_provider not in ["OpenAI", "Anthropic"]):
-            test_format=f"<|im_start|> This is a very long story book: <book> {context} </book>.\n Based on the content of the book, Question: {self.retrieval_question}\nAnswer:"
-            return test_format
-        else: 
-            return [
-                {
-                    "role": "system",
-                    "content": "You are a helpful AI bot that answers questions for a user. Keep your response short and direct"
-                },
-                {
-                    "role": "user",
-                    "content": context
+        if self.prompt_template == "base":
+            if(self.model_provider not in ["OpenAI", "Anthropic"]):
+                test_format=f"<|im_start|> This is a very long story book: <book> {context} </book>.\n Based on the content of the book, Question: {self.retrieval_question}\nAnswer:"
+                return test_format
+            else: 
+                return [
+                    {
+                        "role": "system",
+                        "content": "You are a helpful AI bot that answers questions for a user. Keep your response short and direct"
                     },
-                {
-                    "role": "user",
-                    "content": f"{self.retrieval_question} Don't give information outside the document or repeat your findings. The document definitely contains the answer, and I'm 100% sure. So try your best to find it."
-                },
-                {
-                    "role": "assistant",
-                    "content":"",
-                },
-                
-            ]
-
+                    {
+                        "role": "user",
+                        "content": context
+                        },
+                    {
+                        "role": "user",
+                        "content": f"{self.retrieval_question} Don't give information outside the document or repeat your findings. The document definitely contains the answer, and I'm 100% sure. So try your best to find it."
+                    },
+                    {
+                        "role": "assistant",
+                        "content":"",
+                    },
+                    
+                ]
+        elif self.prompt_template == "SIMPLE_TEMPLATE":
+            from prompt import SIMPLE_TEMPLATE
+            test_format = SIMPLE_TEMPLATE.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1":
+            from prompt import ANTHROPIC_TEMPLATE_REV1
+            test_format = ANTHROPIC_TEMPLATE_REV1.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "":
+            from prompt import ANTHROPIC_TEMPLATE_REV2
+            test_format = ANTHROPIC_TEMPLATE_REV2.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_ORIGINAL":
+            from prompt import ANTHROPIC_TEMPLATE_ORIGINAL
+            test_format = ANTHROPIC_TEMPLATE_ORIGINAL.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "GEMINI_TEMPLATE":
+            from prompt import GEMINI_TEMPLATE
+            test_format = GEMINI_TEMPLATE.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "GEMINI_TEMPLATE2":
+            from prompt import GEMINI_TEMPLATE2
+            test_format = GEMINI_TEMPLATE2.format(question=self.retrieval_question, context=context)
+            return test_format
     def evaluate_and_log(self, context_length, depth_percent):
         # Checks to see if you've already checked a length/percent/version.
         # This helps if the program stop running and you want to restart later
@@ -318,7 +342,11 @@ class LLMNeedleHaystackTester:
         print("begin generate_prompt")
         # Prepare your message to send to the model you're going to evaluate
         prompt = self.generate_prompt(context)
+        
+        print("$rm bos")
+        prompt = prompt.replace("<s>", "")
         print(prompt)
+        
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):
             # import ipdb; ipdb.set_trace()
@@ -594,6 +622,7 @@ if __name__ == "__main__":
     parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
     
     parser.add_argument("--max_tokens", type=int, default=8192)
+    parser.add_argument("--prompt_template", type=str, default="base")
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )
     
@@ -624,6 +653,7 @@ if __name__ == "__main__":
                                  use_cache = args.use_cache,
                                  context_lengths_num_intervals = args.context_lengths_num_intervals,
                                  args_rope = args,
+                                 prompt_template=args.prompt_template
                                  )
 
     ht.start_test(args)

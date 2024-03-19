@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=2
 
 source ./path_teamdrive.sh
 path_dir=$path_team
@@ -24,7 +24,9 @@ setting["longrope_128k"]="-m ${mistral_128k} --method longrope --finetuned --fac
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
 
-name=longrope_mis_128k_debug
+name=longrope_mis_128k_debug_prompt_simple
+rm -rf ./evaluation/needle/result/$name
+
 (
 python -u evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 128000 \
@@ -38,6 +40,7 @@ python -u evaluation/needle/needle_in_haystack.py \
     ${setting["longrope_128k"]} \
     --flash_attn \
     --max_tokens 4000 \
+    --prompt_template SIMPLE_TEMPLATE
 
 ) 2>&1  | tee evaluation/needle/logs/eval_$name.log
 

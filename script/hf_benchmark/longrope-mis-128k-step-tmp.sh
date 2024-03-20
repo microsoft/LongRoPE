@@ -1,10 +1,12 @@
 #!/bin/bash
-#!/bin/bash  
-  
+
+# run job
+# ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
+
 # 定义有效的 job_name 选项和 CUDA_VISIBLE_DEVICES 范围  
 VALID_JOB_NAMES=("ARC" "HELLASWAG" "MMLU" "TRUTHFULQA")  
 VALID_GPU_IDS=({0..7})  # 0 到 7 的数组  
-VALID_CK_STEPS=("1_1000", "1_900", "1_800", "1_700", "1_600", "1_500", "1_400", "1_300", "1_200", "1_100")
+VALID_CK_STEPS=("1_1000" "1_900" "1_800" "1_700" "1_600" "1_500" "1_400" "1_300" "1_200" "1_100")
 
 # 检查 CUDA_VISIBLE_DEVICES 是否有效  
 check_gpu_id() {  
@@ -51,9 +53,6 @@ job["MMLU"]="--tasks=hendrycksTest-abstract_algebra,hendrycksTest-anatomy,hendry
 
 job["TRUTHFULQA"]="--tasks=truthfulqa_mc --num_fewshot=0"
 
-
-# 
-
 # 获取传入的参数  
 GPU_DEVICES=$1  
 job_name=$2  
@@ -80,6 +79,8 @@ BASE_PATH=$path_dir
 
 # MODEL_PATH="/longrope-256k-sft/from-step-1000/ck-$ck_step"
 # MODEL_PATH="/ft_out_model/cube-16k-mistral-128k/ck-400"
+
+# model config
 MODEL_PATH="/ft_out_model/cube-mis-128k-bf16/ck-${ck_step}"
 
 METHOD="longrope"
@@ -91,16 +92,16 @@ MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},fi
 
 OUTPUT_PATH="./script/hf_benchmark"
 
+
 echo "################################"
 printf "GPU_DEVICES:$GPU_DEVICES, \njob_name:$job_name,\nck_step:$ck_step \n"
 echo "################################"
 
-
-# python evaluation/lm-evaluation-harness/main.py \
-#     --model_args=${MODEL_ARGS} \
-#     ${job[${job_name}]} \
-#     ${ARGS} \
-#     --output_path="${OUTPUT_PATH}/${MODEL_PATH}-${job_name}-${METHOD}-${MARK}.json"
+python evaluation/lm-evaluation-harness/main.py \
+    --model_args=${MODEL_ARGS} \
+    ${job[${job_name}]} \
+    ${ARGS} \
+    --output_path="${OUTPUT_PATH}/${MODEL_PATH}-${job_name}-${METHOD}-${MARK}.json"
 
 
 

@@ -7,6 +7,7 @@ contexts/*
 evaluation/needle/result/*
 evaluation/needle/results/*
 evaluation/result/*
+evaluation/needle/img/*
 
 # User-specific files
 *.rsuser
@@ -402,3 +403,4 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 evolution/name.sh
+evaluation/needle/img/longrope_mis_128k_debug_ant_1_ed.png

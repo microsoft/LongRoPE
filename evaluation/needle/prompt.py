@@ -6,10 +6,19 @@ Human: <context>
 {context}
 </context>
 
-{question} Don't give information outside the document or repeat your findings. Respond 
-with "unanswerable" if the information is not available in the context.
+{question} Don't give information outside the document or repeat your findings. Respond with "unanswerable" if the information is not available in the context.
 
 Assistant: Here is the most relevant sentence in the context:
+'''
+
+ANTHROPIC_TEMPLATE_REV1_ED = '''
+You are a helpful AI bot that answers questions for a user. Keep your response short and direct
+
+Human: <context>
+{context}
+</context>
+
+{question} Respond with "unanswerable" if the information is not available in the context. Don't give information outside the document or repeat your findings. Don't repeat your findings. Assistant: Here is the most relevant sentence in the context:
 '''
 
 ANTHROPIC_TEMPLATE_REV2 = '''
@@ -46,8 +55,7 @@ The following is a set of context and a question that will relate to the context
 #ENDCONTEXT
 
 #QUESTION
-{question} Don't give information outside the document or repeat your findings. If the
-information is not available in the context respond UNANSWERABLE.
+{question} Don't give information outside the document or repeat your findings. If the information is not available in the context respond UNANSWERABLE.
 '''
 #The leading spaces in template make a difference so removed them
 GEMINI_TEMPLATE = '''
@@ -58,8 +66,7 @@ The following is a set of context and a question that will relate to the context
 #ENDCONTEXT
 
 #QUESTION
-{question} Don't give information outside the document or repeat your findings. If the
-information is not available in the context respond UNANSWERABLE.'''
+{question} Don't give information outside the document or repeat your findings. If the information is not available in the context respond UNANSWERABLE.'''
 
 GEMINI_TEMPLATE2 = '''
 <context>

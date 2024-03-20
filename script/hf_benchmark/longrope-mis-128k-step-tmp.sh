@@ -51,9 +51,6 @@ job["MMLU"]="--tasks=hendrycksTest-abstract_algebra,hendrycksTest-anatomy,hendry
 
 job["TRUTHFULQA"]="--tasks=truthfulqa_mc --num_fewshot=0"
 
-
-# 
-
 # 获取传入的参数  
 GPU_DEVICES=$1  
 job_name=$2  
@@ -80,6 +77,8 @@ BASE_PATH=$path_dir
 
 # MODEL_PATH="/longrope-256k-sft/from-step-1000/ck-$ck_step"
 # MODEL_PATH="/ft_out_model/cube-16k-mistral-128k/ck-400"
+
+# model config
 MODEL_PATH="/ft_out_model/cube-mis-128k-bf16/ck-${ck_step}"
 
 METHOD="longrope"
@@ -91,16 +90,16 @@ MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},fi
 
 OUTPUT_PATH="./script/hf_benchmark"
 
+
 echo "################################"
 printf "GPU_DEVICES:$GPU_DEVICES, \njob_name:$job_name,\nck_step:$ck_step \n"
 echo "################################"
 
-
-# python evaluation/lm-evaluation-harness/main.py \
-#     --model_args=${MODEL_ARGS} \
-#     ${job[${job_name}]} \
-#     ${ARGS} \
-#     --output_path="${OUTPUT_PATH}/${MODEL_PATH}-${job_name}-${METHOD}-${MARK}.json"
+python evaluation/lm-evaluation-harness/main.py \
+    --model_args=${MODEL_ARGS} \
+    ${job[${job_name}]} \
+    ${ARGS} \
+    --output_path="${OUTPUT_PATH}/${MODEL_PATH}-${job_name}-${METHOD}-${MARK}.json"
 
 
 

@@ -67,7 +67,8 @@ def load_model(model, args):
         model_name,
         config=config,
         cache_dir=args.cache_dir,
-        torch_dtype=torch.float16,
+        # torch_dtype=torch.float16,
+        torch_dtype=config.torch_dtype,
         device_map="auto",
         # trust_remote_code=True if "Yarn" in model_name else False
     )   

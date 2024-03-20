@@ -7,6 +7,7 @@ contexts/*
 evaluation/needle/result/*
 evaluation/needle/results/*
 evaluation/result/*
+lm_cache
 
 # User-specific files
 *.rsuser

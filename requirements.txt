@@ -8,5 +8,6 @@ tqdm==4.65.0
 protobuf
 SentencePiece
 transformers==4.34.0
-wandb
+# wandb
+importlib_resources
 # pip install flash-attn --no-build-isolation

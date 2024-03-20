@@ -12,6 +12,7 @@ evaluation/needle/result/*
 evaluation/needle/results/*
 evaluation/needle/img
 evaluation/result/*
+lm_cache
 
 # User-specific files
 *.rsuser
@@ -409,3 +410,8 @@ FodyWeavers.xsd
 evolution/name.sh
 lm_cache/s-pi_model--mnt-yiran-teamdrive3-ExtendSeqLen-ft_out_model-cube-mis-128k-bf16-ck-1_400_method-longrope_factor-32_finetuned-false_original_max_position_embeddings-4096_cache_dir-.-cache_dir.db
 evaluation/needle/img/longlora-100k.png
+evaluation/log_new.txt
+evolution/search_result/final-dim_mono-4100-it-4_1_2.csv
+evaluation/tmp_re.py
+evolution/search_result/final-dim_mono-4100-it-4_1_2.pt
+evaluation/log.txt

@@ -1,10 +1,12 @@
 #!/bin/bash
-#!/bin/bash  
-  
+
+# run job
+# ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
+
 # 定义有效的 job_name 选项和 CUDA_VISIBLE_DEVICES 范围  
 VALID_JOB_NAMES=("ARC" "HELLASWAG" "MMLU" "TRUTHFULQA")  
 VALID_GPU_IDS=({0..7})  # 0 到 7 的数组  
-VALID_CK_STEPS=("1_1000", "1_900", "1_800", "1_700", "1_600", "1_500", "1_400", "1_300", "1_200", "1_100")
+VALID_CK_STEPS=("1_1000" "1_900" "1_800" "1_700" "1_600" "1_500" "1_400" "1_300" "1_200" "1_100")
 
 # 检查 CUDA_VISIBLE_DEVICES 是否有效  
 check_gpu_id() {  

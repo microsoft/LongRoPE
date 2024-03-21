@@ -378,7 +378,8 @@ class LLMNeedleHaystackTester:
             
             # test ppl
             with torch.no_grad():
-                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
+                # output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
+                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=32, use_cache=self.use_cache)
                 response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
             print("end generate")
                 

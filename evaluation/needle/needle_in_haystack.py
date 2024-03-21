@@ -309,7 +309,7 @@ class LLMNeedleHaystackTester:
             from prompt import ANTHROPIC_TEMPLATE_REV1
             test_format = ANTHROPIC_TEMPLATE_REV1.format(question=self.retrieval_question, context=context)
             return test_format
-        elif self.prompt_template == "":
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV2":
             from prompt import ANTHROPIC_TEMPLATE_REV2
             test_format = ANTHROPIC_TEMPLATE_REV2.format(question=self.retrieval_question, context=context)
             return test_format
@@ -325,6 +325,11 @@ class LLMNeedleHaystackTester:
             from prompt import GEMINI_TEMPLATE2
             test_format = GEMINI_TEMPLATE2.format(question=self.retrieval_question, context=context)
             return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1_ED":
+            from prompt import ANTHROPIC_TEMPLATE_REV1_ED
+            test_format = ANTHROPIC_TEMPLATE_REV1_ED.format(question=self.retrieval_question, context=context)
+            return test_format
+    
     def evaluate_and_log(self, context_length, depth_percent):
         # Checks to see if you've already checked a length/percent/version.
         # This helps if the program stop running and you want to restart later
@@ -372,18 +377,19 @@ class LLMNeedleHaystackTester:
             print("begin generate, context_length", context_length)
             
             # test ppl
-            
-            
             with torch.no_grad():
-                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
+                # output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
+                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=32, use_cache=self.use_cache)
                 response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
             print("end generate")
                 
 
         test_end_time = time.time()
         test_elapsed_time = test_end_time - test_start_time
+        
+        print(f"$$self.needle,\"{self.needle}\"\nresponse,\"{response}\"\n")
         score = scorer.score(self.needle, response)['rouge1'].fmeasure*10
-
+        
         results = {
             # 'context' : context, # Uncomment this line if you'd like to save the context the model was asked to retrieve from. Warning: This will become very large.
             'model' : self.model_to_test_description,
@@ -419,8 +425,11 @@ class LLMNeedleHaystackTester:
             if not os.path.exists(f'contexts/{self.model_version}'):
                 os.makedirs(f'contexts/{self.model_version}')
 
-            with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
-                f.write(context)
+            # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
+            #     f.write(context)
+            with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
+                f.write(context)  
+
             
         if self.save_results:
             # Save the context to file for retesting

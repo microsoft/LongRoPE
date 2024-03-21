@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=4
 
 source ./path_teamdrive.sh
 path_dir=$path_team
@@ -23,7 +23,7 @@ base=${path_team}/Llama-2-7b-hf/
 name=longrope_128k
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
-rm ./evaluation/needle/result/longrope_128k_load/*
+rm ./evaluation/needle/result/longrope_128k_debug/*
 
 (
 python -u evaluation/needle/needle_in_haystack.py \
@@ -38,6 +38,8 @@ python -u evaluation/needle/needle_in_haystack.py \
     ${setting[${name}]} \
     --flash_attn \
     --max_tokens 4000 \
+    --aggressive_mem_causal_lm \
+    --aggressive_mem_decoder \
 
 ) 2>&1  | tee evaluation/needle/logs/eval_${name}_debug.log
 

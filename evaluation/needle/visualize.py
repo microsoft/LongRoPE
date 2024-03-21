@@ -6,6 +6,7 @@ from matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
 import json
 import glob
+import argparse
 
 FOLDER_PATH = "./evaluation/needle/"
 # LOG_PATH = "longlora-100k"
@@ -18,13 +19,18 @@ LOG_PATH = "longrope_mis_128k"
 MODEL_NAME = LOG_PATH
 PRETRAINED_LEN=4096
 
-def main():
+def main(args):
     # Path to the directory containing JSON results
-    folder_path = FOLDER_PATH + "result/" + LOG_PATH + "/"
+    LOG_PATH = args.path
+    # /mnt/yiran/LongRoPE/evaluation/needle/result/longrope_mis_128k_debug_ant_1/ck-400
+    folder_path = FOLDER_PATH + "result/" + LOG_PATH + "/ck-400/"
+    print("folder_path", folder_path)
+    MODEL_NAME = LOG_PATH
     # if("/" in folder_path):
     #     model_name = folder_path.split("/")[-2]
     # else: 
     model_name = MODEL_NAME
+
     print("model_name = %s" % model_name)
 
     # Using glob to find all json files in the directory
@@ -105,4 +111,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", type=str, default=None)
+    args = parser.parse_args()
+    main(args)

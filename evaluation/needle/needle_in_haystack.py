@@ -39,6 +39,7 @@ import glob
 import json
 import tensor_parallel as tp
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+import cube
 
 try:
     import tiktoken
@@ -50,7 +51,6 @@ except:
 import numpy as np
 import argparse
 from rouge_score import rouge_scorer
-import tensor_parallel as tp
 
 import sys
 current_path = os.getcwd()
@@ -59,6 +59,16 @@ print(current_path)
 
 
 scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+
+import torch.distributed as dist  
+  
+def print_single(*args):  
+    if dist.get_rank() == 0:  
+        for args_output in args:  
+            print(args_output)  
+  
+
+# print_single("Hello", "Distributed", "World")  
 
 
 from datetime import datetime, timezone
@@ -178,21 +188,51 @@ class LLMNeedleHaystackTester:
             self.enc = AutoTokenizer.from_pretrained(model_name, use_fast = True )
             print("loading from %s" % model_name)
 
-            # self.model_to_test = None
-            if self.args_rope.method != "longrope":
-                # default setting
-                self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
-                    use_flash_attention_2="flash_attention_2", 
-                    torch_dtype=torch.bfloat16,
-                    device_map="auto",
-                    ).eval()
+            if args.use_cube:
+                if self.args_rope.method == "longrope":
+                    
+                    config = AutoConfig.from_pretrained(model_name)
+                    
+                    if args.cube_trace:
+                        if config.model_type == "mistral":
+                            print(model_name)
+                            from evaluation.model_loader_mistral_cube import load_model_and_apply_patches_mistral
+                            self.model_to_test = load_model_and_apply_patches_mistral(model_name, config, self.args_rope)
+                        elif config.model_type == "llama":
+                            print(model_name)
+                            from evaluation.model_loader_llama_cube import load_model_and_apply_patches
+                            self.model_to_test = load_model_and_apply_patches(model_name, config, self.args_rope)
+                        else:
+                            raise ValueError("Model type did not support!")
+                    else:
+                        if config.model_type == "mistral":
+                            print(model_name)
+                            from evaluation.model_loader_mistral_cube import update_config
+                        elif config.model_type == "llama":
+                            from evaluation.model_loader_llama_cube import update_config
+                        else:
+                            raise ValueError("Model type did not support!")
+                        self.model_to_test = None
+                    # new_config
+                    self.config = update_config(config, self.args_rope)
+                    from evaluation.cube_api import compile_model
+                    self.model_to_test, self.infer_fn = compile_model(self.model_to_test, self.args_rope, self.config)
+            else:
+                self.infer_fn = None
+                # self.model_to_test = None
+                if self.args_rope.method != "longrope":
+                    # default setting
+                    self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
+                        use_flash_attention_2="flash_attention_2", 
+                        torch_dtype=torch.bfloat16,
+                        device_map="auto",
+                        ).eval()
 
-                self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+                    self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
 
             # compute_perplexity
             # longlora-100k
  
-            
             # "--tokenized ${/mnt/yiran/teamdrive3/ExtendSeqLen}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 10 --truncate"
             # import datasets
             # input_texts = datasets.load_from_disk("/mnt/yiran/teamdrive3/ExtendSeqLen/proofpile-test-tokenized")
@@ -204,14 +244,14 @@ class LLMNeedleHaystackTester:
             # tokenizer=AutoTokenizer.from_pretrained(self.model_name, use_fast = True )
             # from evaluation.perplexity import compute_perplexity
             # max_length = 8192
-            # print("self.model_to_test", self.model_to_test)
+            # print_single("self.model_to_test", self.model_to_test)
             # ppl = compute_perplexity(
             #     model=self.model_to_test, tokenizer=tokenizer, encodings=input_texts,
             #     add_start_token=tokenizer.bos_token is not None, max_length=max_length,
             #     sliding_window=256, truncate=True,
             #     use_cache=False
             #     )['mean_perplexity']
-            # print(f"$max_length {max_length} ppl {ppl}")
+            # print_single(f"$max_length {max_length} ppl {ppl}")
             # exit(0)
         
         else: 
@@ -247,30 +287,30 @@ class LLMNeedleHaystackTester:
             
             # load model
             # change
-            if self.args_rope.method == "longrope":
-                # diff seq
-                self.args_rope.max_tokens = context_length
-                # self.args_rope.max_tokens = 128000
-                
-                config = AutoConfig.from_pretrained(model_name)
-                # print("config", config)
-                if config.model_type == "mistral":
-                    print(model_name)
-                    from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
-                    loaded, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
-                    self.model_to_test = loaded.eval()
+            if not args.use_cube:
+                if self.args_rope.method == "longrope":
+                    # diff seq
+                    self.args_rope.max_tokens = context_length
+                    # self.args_rope.max_tokens = 128000
                     
-                elif config.model_type == "llama":
-                    print(model_name)
-                    from evaluation.model_loader_llama import load_model_and_apply_patches
-                    loaded, _ = load_model_and_apply_patches(model_name, self.args_rope)
-                    self.model_to_test = loaded.eval()
+                    config = AutoConfig.from_pretrained(model_name)
+                    if config.model_type == "mistral":
+                        print(model_name)
+                        from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
+                        loaded, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
+                        self.model_to_test = loaded.eval()
+                        
+                    elif config.model_type == "llama":
+                        print(model_name)
+                        from evaluation.model_loader_llama import load_model_and_apply_patches
+                        loaded, _ = load_model_and_apply_patches(model_name, self.args_rope)
+                        self.model_to_test = loaded.eval()
+                        
+                    else:
+                        raise ValueError("Model type did not support!")
                     
-                else:
-                    raise ValueError("Model type did not support!")
-                
-                self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
-        
+                    self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+            
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
@@ -335,22 +375,22 @@ class LLMNeedleHaystackTester:
         # This helps if the program stop running and you want to restart later
         if self.save_results:
             if self.result_exists(context_length, depth_percent):
-                print("result exists, skipping")
+                print_single("result exists, skipping")
                 return
             else:
-                print("result does not exist, testing")
+                print_single("result does not exist, testing")
                 
-        print("begin generate_context")
+        print_single("begin generate_context")
         # Go generate the required length context and place your needle statement in
         context = self.generate_context(context_length, depth_percent)
 
-        print("begin generate_prompt")
+        print_single("begin generate_prompt")
         # Prepare your message to send to the model you're going to evaluate
         prompt = self.generate_prompt(context)
         
-        print("$rm bos")
+        print_single("$rm bos")
         prompt = prompt.replace("<s>", "")
-        print(prompt)
+        print_single(prompt)
         
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):
@@ -363,31 +403,34 @@ class LLMNeedleHaystackTester:
             )
             response = response.choices[0].message.content
         else:
-            print("begin tokenizer")
-            # print("prompt[:, -100:]", prompt[-100:])
+            print_single("begin tokenizer")
+            # print_single("prompt[:, -100:]", prompt[-100:])
             prompt = self.enc(prompt, return_tensors="pt")
-            print("end tokenizer")
+            print_single("end tokenizer")
             
-            input_ids = prompt['input_ids'].to(self.model_to_test.device)
+            input_ids = prompt['input_ids'].to(torch.cuda.current_device())
             if input_ids[0, -1] == self.enc.eos_token_id:
                 input_ids = input_ids[:, :-1]
             
-            print("input_ids[:, -5:]", input_ids[:, -5:])
+            print_single("input_ids[:, -5:]", input_ids[:, -5:])
             
-            print("begin generate, context_length", context_length)
+            print_single("begin generate, context_length", context_length)
             
             # test ppl
             with torch.no_grad():
                 # output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
-                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=32, use_cache=self.use_cache)
-                response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
-            print("end generate")
+                if args.use_cube:
+                    from evaluation.cube_api import generate
+                    response = generate(self.args_rope, self.model_to_test, self.infer_fn, self.config, self.enc, input_ids, max_new_tokens=32)
+                else:
+                    output_ids = self.model_to_test.generate(input_ids, max_new_tokens=32, use_cache=self.use_cache)
+                    response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
+            print_single("end generate")
                 
-
         test_end_time = time.time()
         test_elapsed_time = test_end_time - test_start_time
         
-        print(f"$$self.needle,\"{self.needle}\"\nresponse,\"{response}\"\n")
+        print_single(f"$$self.needle,\"{self.needle}\"\nresponse,\"{response}\"\n")
         score = scorer.score(self.needle, response)['rouge1'].fmeasure*10
         
         results = {
@@ -406,45 +449,74 @@ class LLMNeedleHaystackTester:
         self.testing_results.append(results)
 
         if self.print_ongoing_status:
-            print (f"-- Test Summary -- ")
-            print (f"Duration: {test_elapsed_time:.1f} seconds")
-            print (f"Context: {context_length} tokens")
-            print (f"Depth: {depth_percent}%")
-            print (f"Score: {score}")
-            print (f"Response: {response}\n")
+            print_single (f"-- Test Summary -- ")
+            print_single (f"Duration: {test_elapsed_time:.1f} seconds")
+            print_single (f"Context: {context_length} tokens")
+            print_single (f"Depth: {depth_percent}%")
+            print_single (f"Score: {score}")
+            print_single (f"Response: {response}\n")
 
         context_file_location = f'{self.model_version.replace(".", "_")}_len_{context_length}_depth_{int(depth_percent*100)}'
 
         if self.save_contexts:
-            results['file_name'] : context_file_location
+            if args.use_cube:
+                if torch.distributed.get_rank() == 0:
+                    results['file_name'] : context_file_location
 
-            # Save the context to file for retesting
-            if not os.path.exists('contexts'):
-                os.makedirs('contexts')
+                    # Save the context to file for retesting
+                    if not os.path.exists('contexts'):
+                        os.makedirs('contexts')
 
-            if not os.path.exists(f'contexts/{self.model_version}'):
-                os.makedirs(f'contexts/{self.model_version}')
+                    if not os.path.exists(f'contexts/{self.model_version}'):
+                        os.makedirs(f'contexts/{self.model_version}')
 
-            # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
-            #     f.write(context)
-            with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
-                f.write(context)  
+                    # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
+                    #     f.write(context)
+                    with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
+                        f.write(context)  
+            else:
+                results['file_name'] : context_file_location
 
+                # Save the context to file for retesting
+                if not os.path.exists('contexts'):
+                    os.makedirs('contexts')
+
+                if not os.path.exists(f'contexts/{self.model_version}'):
+                    os.makedirs(f'contexts/{self.model_version}')
+
+                # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
+                #     f.write(context)
+                with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
+                    f.write(context)  
             
         if self.save_results:
             # Save the context to file for retesting
             
-            if not os.path.exists(self.result_path):
-                os.makedirs(self.result_path)
-            
-            if not os.path.exists(f'{self.result_path}/{self.model_version}'):
-                os.makedirs(f'{self.result_path}/{self.model_version}')
+            if args.use_cube:
+                if torch.distributed.get_rank() == 0:
+                    if not os.path.exists(self.result_path):
+                        os.makedirs(self.result_path)
+                    
+                    if not os.path.exists(f'{self.result_path}/{self.model_version}'):
+                        os.makedirs(f'{self.result_path}/{self.model_version}')
 
-            # Save the result to file for retesting
-            p = f'{self.result_path}/{self.model_version}/{context_file_location}_results.json'
-            print("Writing at %s" % p)
-            with open(p, 'w') as f:
-                json.dump(results, f)
+                    # Save the result to file for retesting
+                    p = f'{self.result_path}/{self.model_version}/{context_file_location}_results.json'
+                    print_single("Writing at %s" % p)
+                    with open(p, 'w') as f:
+                        json.dump(results, f)
+            else:
+                if not os.path.exists(self.result_path):
+                    os.makedirs(self.result_path)
+                
+                if not os.path.exists(f'{self.result_path}/{self.model_version}'):
+                    os.makedirs(f'{self.result_path}/{self.model_version}')
+
+                # Save the result to file for retesting
+                p = f'{self.result_path}/{self.model_version}/{context_file_location}_results.json'
+                print_single("Writing at %s" % p)
+                with open(p, 'w') as f:
+                    json.dump(results, f)
 
     def result_exists(self, context_length, depth_percent):
         """
@@ -452,7 +524,7 @@ class LLMNeedleHaystackTester:
         """
 
         results_dir = 'results/' + self.model_version
-        print("Searching existing results at %s" % results_dir)
+        print_single("Searching existing results at %s" % results_dir)
         if not os.path.exists(results_dir):
             return False
         for filename in os.listdir(results_dir):
@@ -495,10 +567,10 @@ class LLMNeedleHaystackTester:
         tokens_needle = self.encode_text_to_tokens(self.needle)
         tokens_context = self.encode_text_to_tokens(context)
 
-        print("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+        print_single("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
         if tokens_needle[-1] == self.enc.eos_token_id:
             tokens_needle = tokens_needle[:-1]
-        print("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+        print_single("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
         
         # Reducing the context length by 150 buffer. This is to account for system message, the user question, and response.
         context_length -= self.final_context_length_buffer
@@ -529,7 +601,7 @@ class LLMNeedleHaystackTester:
                 insertion_point -= 1
                 tokens_new_context = tokens_context[:insertion_point]
 
-            print("insertion at %d" % insertion_point)
+            print_single("insertion at %d" % insertion_point)
             # Once we get there, then add in your needle, and stick the rest of your context in on the other end.
             # Now we have a needle in a haystack
             tokens_new_context += tokens_needle + tokens_context[insertion_point:]
@@ -556,8 +628,8 @@ class LLMNeedleHaystackTester:
         try_read_context_files = 0
         while self.get_context_length_in_tokens(context) < max_context_length:
             try_read_context_files += 1
-            print("try_read_context_files", try_read_context_files)
-            print("curr len:", self.get_context_length_in_tokens(context))
+            print_single("try_read_context_files", try_read_context_files)
+            print_single("curr len:", self.get_context_length_in_tokens(context))
             
             for file in glob.glob(f"{self.haystack_dir}/*.txt"):
                 with open(file, 'r') as f:
@@ -607,7 +679,7 @@ class LLMNeedleHaystackTester:
         total_start_time = time.time()
         self.run_test(args)
         total_end_time = time.time()
-        print("Total time:", total_end_time -total_start_time)
+        print_single("Total time:", total_end_time -total_start_time)
 
 
 if __name__ == "__main__":
@@ -635,6 +707,15 @@ if __name__ == "__main__":
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )
     
+    # NOTE: for cube
+    parser.add_argument("--cpu", action="store_true")
+    parser.add_argument("--use_cube", action="store_true")
+    parser.add_argument("--tp_size", type=int, default=1)
+    parser.add_argument("--use_warm_up", action="store_true")
+    parser.add_argument("--cube_trace", action="store_true")
+    parser.add_argument("--rope_method", type=str, default="s_pi")
+    parser.add_argument("--rope_tmps", type=str, default="su")
+    
     from evaluation.model_loader_llama import add_args
     # parser= argparse.ArgumentParser()
     parser = add_args(parser)
@@ -648,6 +729,8 @@ if __name__ == "__main__":
         assert(args.model_name is not None)
         model_name = args.model_name
 
+    cube.init()
+    
     ht = LLMNeedleHaystackTester(model_name=model_name, 
                                  model_name_suffix=args.model_name_suffix,
                                  model_provider=args.model_provider,
@@ -664,5 +747,5 @@ if __name__ == "__main__":
                                  args_rope = args,
                                  prompt_template=args.prompt_template
                                  )
-
-    ht.start_test(args)
+    if not args.cube_trace:
+        ht.start_test(args)

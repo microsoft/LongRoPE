@@ -728,8 +728,9 @@ if __name__ == "__main__":
     else: 
         assert(args.model_name is not None)
         model_name = args.model_name
-
-    cube.init()
+    
+    if args.use_cube:
+        cube.init()
     
     ht = LLMNeedleHaystackTester(model_name=model_name, 
                                  model_name_suffix=args.model_name_suffix,

@@ -22,10 +22,13 @@ PRETRAINED_LEN=4096
 def main(args):
     # Path to the directory containing JSON results
     LOG_PATH = args.path
+    MODEL_NAME = args.name
     # /mnt/yiran/LongRoPE/evaluation/needle/result/longrope_mis_128k_debug_ant_1/ck-400
-    folder_path = FOLDER_PATH + "result/" + LOG_PATH + "/ck-400/"
+    # /mnt/yiran/LongRoPE/evaluation/needle/result/longrope_mis_128k_bf16_1_400_debug_ANTHROPIC_TEMPLATE_ORIGINAL/ck-1_400
+    # folder_path = FOLDER_PATH + "result/" + LOG_PATH + "/ck-1_400/"
+    folder_path = args.path
     print("folder_path", folder_path)
-    MODEL_NAME = LOG_PATH
+    # MODEL_NAME = LOG_PATH
     # if("/" in folder_path):
     #     model_name = folder_path.split("/")[-2]
     # else: 
@@ -113,5 +116,6 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", type=str, default=None)
+    parser.add_argument("--name", type=str, default=None)
     args = parser.parse_args()
     main(args)

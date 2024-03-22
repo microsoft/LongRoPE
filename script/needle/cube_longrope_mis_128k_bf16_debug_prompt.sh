@@ -30,10 +30,42 @@ echo "prompt_name: $prompt_name"
 
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
+# # clean pt
+pt_list="fullmodel.pt.* gencode* cube_graph.pb dist_param_map.pt"
 
-name=longrope_mis_128k_bf16_debug_$prompt_name
+
+name=cube_longrope_mis_128k_bf16_debug_$prompt_name
 rm -rf ./evaluation/needle/result/$name
 
+
+echo "cube trace ..."
+gpu_num=1
+
+# rm $pt_list
+# CUDA_VISIBLE_DEVICES=4 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
+#     --nproc_per_node=$gpu_num \
+#     --master_port 29510 \
+#     evaluation/needle/needle_in_haystack.py \
+#     --s_len 0 --e_len 1024000 \
+#     --context_lengths_min 1024 \
+#     --context_lengths_max 1024000 \
+#     --context_lengths_num_intervals 10 \
+#     --document_depth_percent_intervals 5 \
+#     --model_provider Mistral \
+#     --model_path ${mistral_128k} \
+#     --result_path ./evaluation/needle/result/$name/ \
+#     ${setting["longrope_128k"]} \
+#     --flash_attn \
+#     --max_tokens 4000 \
+#     --prompt_template $prompt_name \
+#     --use_cube \
+#     --rope_method s_pi \
+#     --rope_tmps su \
+#     --use_cache \
+#     --tp_size $gpu_num \
+#     --cube_trace
+
+echo "cube run ..."
 gpu_num=4
 (
 CUDA_VISIBLE_DEVICES=4,5,6,7 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \

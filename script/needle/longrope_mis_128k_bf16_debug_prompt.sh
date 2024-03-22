@@ -1,6 +1,4 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=7
-
 source ./path_teamdrive.sh
 path_dir=$path_team
 
@@ -36,8 +34,12 @@ echo "prompt_name: $prompt_name"
 name=longrope_mis_128k_bf16_debug_$prompt_name
 rm -rf ./evaluation/needle/result/$name
 
+gpu_num=1
 (
-python -u evaluation/needle/needle_in_haystack.py \
+CUDA_VISIBLE_DEVICES=7 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
+    --nproc_per_node=$gpu_num \
+    --master_port 29505 \
+    evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 128000 \
     --context_lengths_min 1024 \
     --context_lengths_max 128000 \

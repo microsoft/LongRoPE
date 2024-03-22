@@ -196,25 +196,28 @@ class LLMNeedleHaystackTester:
                     if args.cube_trace:
                         if config.model_type == "mistral":
                             print(model_name)
-                            from evaluation.model_loader_mistral_cube import load_model_and_apply_patches_mistral
+                            from evaluation.model_loader_mistral_cube import load_model_and_apply_patches_mistral, update_config
                             self.model_to_test = load_model_and_apply_patches_mistral(model_name, config, self.args_rope)
+                            self.config = update_config(config, self.args_rope)
                         elif config.model_type == "llama":
                             print(model_name)
-                            from evaluation.model_loader_llama_cube import load_model_and_apply_patches
+                            from evaluation.model_loader_llama_cube import load_model_and_apply_patches, update_config
                             self.model_to_test = load_model_and_apply_patches(model_name, config, self.args_rope)
+                            self.config = update_config(config, self.args_rope)
                         else:
                             raise ValueError("Model type did not support!")
                     else:
                         if config.model_type == "mistral":
                             print(model_name)
                             from evaluation.model_loader_mistral_cube import update_config
+                            self.config = update_config(config, self.args_rope)
                         elif config.model_type == "llama":
                             from evaluation.model_loader_llama_cube import update_config
+                            self.config = update_config(config, self.args_rope)
                         else:
                             raise ValueError("Model type did not support!")
                         self.model_to_test = None
                     # new_config
-                    self.config = update_config(config, self.args_rope)
                     from evaluation.cube_api import compile_model
                     self.model_to_test, self.infer_fn = compile_model(self.model_to_test, self.args_rope, self.config)
             else:
@@ -309,7 +312,7 @@ class LLMNeedleHaystackTester:
                     else:
                         raise ValueError("Model type did not support!")
                     
-                    self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+                    # self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
             
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
@@ -729,8 +732,7 @@ if __name__ == "__main__":
         assert(args.model_name is not None)
         model_name = args.model_name
     
-    if args.use_cube:
-        cube.init()
+    cube.init()
     
     ht = LLMNeedleHaystackTester(model_name=model_name, 
                                  model_name_suffix=args.model_name_suffix,

@@ -189,37 +189,36 @@ class LLMNeedleHaystackTester:
             print("loading from %s" % model_name)
 
             if args.use_cube:
-                if self.args_rope.method == "longrope":
                     
-                    config = AutoConfig.from_pretrained(model_name)
-                    
-                    if args.cube_trace:
-                        if config.model_type == "mistral":
-                            print(model_name)
-                            from evaluation.model_loader_mistral_cube import load_model_and_apply_patches_mistral, update_config
-                            self.model_to_test = load_model_and_apply_patches_mistral(model_name, config, self.args_rope)
-                            self.config = update_config(config, self.args_rope)
-                        elif config.model_type == "llama":
-                            print(model_name)
-                            from evaluation.model_loader_llama_cube import load_model_and_apply_patches, update_config
-                            self.model_to_test = load_model_and_apply_patches(model_name, config, self.args_rope)
-                            self.config = update_config(config, self.args_rope)
-                        else:
-                            raise ValueError("Model type did not support!")
+                config = AutoConfig.from_pretrained(model_name)
+                
+                if args.cube_trace:
+                    if config.model_type == "mistral":
+                        print(model_name)
+                        from evaluation.model_loader_mistral_cube import load_model_and_apply_patches_mistral, update_config
+                        self.model_to_test = load_model_and_apply_patches_mistral(model_name, config, self.args_rope)
+                        self.config = update_config(config, self.args_rope)
+                    elif config.model_type == "llama":
+                        print(model_name)
+                        from evaluation.model_loader_llama_cube import load_model_and_apply_patches, update_config
+                        self.model_to_test = load_model_and_apply_patches(model_name, config, self.args_rope)
+                        self.config = update_config(config, self.args_rope)
                     else:
-                        if config.model_type == "mistral":
-                            print(model_name)
-                            from evaluation.model_loader_mistral_cube import update_config
-                            self.config = update_config(config, self.args_rope)
-                        elif config.model_type == "llama":
-                            from evaluation.model_loader_llama_cube import update_config
-                            self.config = update_config(config, self.args_rope)
-                        else:
-                            raise ValueError("Model type did not support!")
-                        self.model_to_test = None
-                    # new_config
-                    from evaluation.cube_api import compile_model
-                    self.model_to_test, self.infer_fn = compile_model(self.model_to_test, self.args_rope, self.config)
+                        raise ValueError("Model type did not support!")
+                else:
+                    if config.model_type == "mistral":
+                        print(model_name)
+                        from evaluation.model_loader_mistral_cube import update_config
+                        self.config = update_config(config, self.args_rope)
+                    elif config.model_type == "llama":
+                        from evaluation.model_loader_llama_cube import update_config
+                        self.config = update_config(config, self.args_rope)
+                    else:
+                        raise ValueError("Model type did not support!")
+                    self.model_to_test = None
+                # new_config
+                from evaluation.cube_api import compile_model
+                self.model_to_test, self.infer_fn = compile_model(self.model_to_test, self.args_rope, self.config)
             else:
                 self.infer_fn = None
                 # self.model_to_test = None

@@ -13,147 +13,9 @@ import torch
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
 
-from attention.mistral_attn_replace import replace_mistral_attn
+from attention.mistral_attn_replace import replace_mistral_attn, forward_mistral_for_causal_lm, forward_mistral_decoder_layer
 import math
 import numpy as np
-
-
-def forward_mistral_for_causal_lm(
-    self,
-    input_ids: torch.LongTensor = None,
-    attention_mask: Optional[torch.Tensor] = None,
-    position_ids: Optional[torch.LongTensor] = None,
-    past_key_values: Optional[List[torch.FloatTensor]] = None,
-    inputs_embeds: Optional[torch.FloatTensor] = None,
-    labels: Optional[torch.LongTensor] = None,
-    use_cache: Optional[bool] = None,
-    output_attentions: Optional[bool] = None,
-    output_hidden_states: Optional[bool] = None,
-    return_dict: Optional[bool] = None,
-) -> Union[Tuple, CausalLMOutputWithPast]:
-    assert labels is not None
-
-    output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
-    output_hidden_states = (
-        output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
-    )
-    return_dict = return_dict if return_dict is not None else self.config.use_return_dict
-
-    # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
-    outputs = self.model(
-        input_ids=input_ids,
-        attention_mask=attention_mask,
-        position_ids=position_ids,
-        past_key_values=past_key_values,
-        inputs_embeds=inputs_embeds,
-        use_cache=use_cache,
-        output_attentions=output_attentions,
-        output_hidden_states=output_hidden_states,
-        return_dict=return_dict,
-    )
-    torch.cuda.empty_cache()
-
-    hidden_states = outputs[0]
-    loss_fct = CrossEntropyLoss(reduction='sum')
-    valid_seq_len = input_ids.shape[-1] - 1
-    valid_seq_len_slide_win = torch.sum(labels[:, 1:] >= 0).item()
-    # print("valid_seq_len_slide_win", valid_seq_len)
-    loss = 0.0
-
-    for start_idx in range(0, valid_seq_len, 16384):
-        end_idx = min(start_idx + 16384, valid_seq_len)
-        shift_logits = self.lm_head(hidden_states[..., start_idx:end_idx, :]).float()
-        shift_labels = labels[..., start_idx + 1:end_idx + 1].contiguous()
-        # Flatten the tokens
-        shift_logits = shift_logits.view(-1, self.config.vocab_size)
-        shift_labels = shift_labels.view(-1)
-        # Enable model parallelism
-        shift_labels = shift_labels.to(shift_logits.device)
-        loss += loss_fct(shift_logits, shift_labels)
-        
-    loss /= valid_seq_len_slide_win
-
-    return CausalLMOutputWithPast(loss=loss)
-
-
-def forward_mistral_decoder_layer(
-    self,
-    hidden_states: torch.Tensor,
-    attention_mask: Optional[torch.Tensor] = None,
-    position_ids: Optional[torch.LongTensor] = None,
-    past_key_value: Optional[Tuple[torch.Tensor]] = None,
-    output_attentions: Optional[bool] = False,
-    use_cache: Optional[bool] = False,
-    padding_mask: Optional[torch.LongTensor] = None,
-) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
-    """
-    Args:
-        hidden_states (`torch.FloatTensor`): input to the layer of shape `(batch, seq_len, embed_dim)`
-        attention_mask (`torch.FloatTensor`, *optional*): attention mask of size
-            `(batch, 1, tgt_len, src_len)` where padding elements are indicated by very large negative values.
-        output_attentions (`bool`, *optional*):
-            Whether or not to return the attentions tensors of all attention layers. See `attentions` under
-            returned tensors for more detail.
-        use_cache (`bool`, *optional*):
-            If set to `True`, `past_key_values` key value states are returned and can be used to speed up decoding
-            (see `past_key_values`).
-        past_key_value (`Tuple(torch.FloatTensor)`, *optional*): cached past key and value projection states
-    """
-
-    residual = hidden_states.clone()
-    batch, seq_len, embed_dim = hidden_states.shape
-
-    for start_idx in range(0, seq_len, 16384):
-        end_idx = min(seq_len, start_idx + 16384)
-        hidden_states[:, start_idx:end_idx, :] = self.input_layernorm(hidden_states[:, start_idx:end_idx, :])
-    # print("LN: A({}) R({}) M({})".format(
-    #     torch.cuda.memory_allocated(0) / (1024 ** 3),
-    #     torch.cuda.memory_reserved(0) / (1024 ** 3),
-    #     torch.cuda.max_memory_reserved(0) / (1024 ** 3),
-    # ))
-    # torch.cuda.empty_cache()
-
-    # Self Attention
-    hidden_states, self_attn_weights, present_key_value = self.self_attn(
-        hidden_states=hidden_states,
-        attention_mask=attention_mask,
-        position_ids=position_ids,
-        past_key_value=past_key_value,
-        output_attentions=output_attentions,
-        use_cache=use_cache,
-        padding_mask=padding_mask,
-    )
-    hidden_states = residual + hidden_states
-    # print("At: A({}) R({}) M({})".format(
-    #     torch.cuda.memory_allocated(0) / (1024 ** 3),
-    #     torch.cuda.memory_reserved(0) / (1024 ** 3),
-    #     torch.cuda.max_memory_reserved(0) / (1024 ** 3),
-    # ))
-    # torch.cuda.empty_cache()
-
-    # Fully Connected
-    for start_idx in range(0, seq_len, 16384):
-        end_idx = min(seq_len, start_idx + 16384)
-        part_hidden_states = hidden_states[:, start_idx:end_idx, :].clone()
-        part_hidden_states = self.post_attention_layernorm(part_hidden_states)
-        part_hidden_states = self.mlp(part_hidden_states)
-        hidden_states[:, start_idx:end_idx, :] += part_hidden_states
-    # print("FC: A({}) R({}) M({})".format(
-    #     torch.cuda.memory_allocated(0) / (1024 ** 3),
-    #     torch.cuda.memory_reserved(0) / (1024 ** 3),
-    #     torch.cuda.max_memory_reserved(0) / (1024 ** 3),
-    # ) + '\n')
-    # torch.cuda.empty_cache()
-
-    outputs = (hidden_states,)
-
-    if output_attentions:
-        outputs += (self_attn_weights,)
-
-    if use_cache:
-        outputs += (present_key_value,)
-
-    return outputs
 
 
 def load_model(model, args):
@@ -169,12 +31,8 @@ def load_model(model, args):
     
     print("aggressive_mem_causal_lm", args.aggressive_mem_causal_lm)
     if args.aggressive_mem_causal_lm:
-        if "Mistral" in args.model[0][0] or "mistral" in args.model[0][0]:
-        #    transformers.models.mistral.modeling_mistral.MistralAttention.forward = forward_flashattn_inference
-           transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
-        else:
-            raise ValueError("name not in mistral")
-        
+        transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
+
     print("aggressive-mem-decoder", args.aggressive_mem_decoder)
     if args.aggressive_mem_decoder:
         transformers.models.mistral.modeling_mistral.MistralDecoderLayer.forward = forward_mistral_decoder_layer
@@ -182,13 +40,14 @@ def load_model(model, args):
         
     print("flash_attn", args.flash_attn)
     if args.flash_attn:
-        # if "Mistral" in args.model[0][0] or "mistral" in args.model[0][0]:
         print("use replace flash attn")
         # replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True)
         replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True, aggressive_memory=args.aggressive_mem_attn)
     
     model_name = model
+
     config = transformers.AutoConfig.from_pretrained(
+    # config = config_cls.from_pretrained(
         model_name,
         cache_dir=args.cache_dir,
     )
@@ -200,22 +59,26 @@ def load_model(model, args):
         config.sliding_window = 16384
     scaling_factor = float(args.factor)
     
+    print(model_name)
+    print("config.torch_dtype,", config.torch_dtype)
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_name,
         config=config,
         cache_dir=args.cache_dir,
-        torch_dtype=torch.float16,
+        # torch_dtype=torch.float16,
+        torch_dtype=config.torch_dtype,
         device_map="auto",
+        # trust_remote_code=True if "Yarn" in model_name else False
     )   
     
     
     # load rope_para:
     # ft: 4k 8k 256k 512k 1024k 
-    if args.finetuned and args.method == "s_pi":
+    if args.finetuned and args.method == "longrope":
         print("args.finetuned", args.finetuned, "use rope_scale.pt")
         if args.max_tokens != None:
             seq_len = (args.max_tokens + 1023) // 1024
-            seq_range = [0, 4, 8, 16, 128, 256, 1024, 2048, 10000]
+            seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
             for i in range(len(seq_range)-1):
                 if seq_range[i] <= seq_len <= seq_range[i+1]:   
                     seq_len = seq_range[i+1]
@@ -224,8 +87,8 @@ def load_model(model, args):
                 model_type = "mis"
             else:
                 raise ValueError("model_type is not mistral")  
-            ft_model_len = (config.max_position_embeddings + 1023) // 1024
-
+            ft_model_len = (config.sliding_window + 1023) // 1024
+            print("config.sliding_window", config.sliding_window)
             flag_twice = False
             ft_model_key = None
             
@@ -239,22 +102,31 @@ def load_model(model, args):
                 para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
             
             # 128k la2 256k
-            if para_key == '128k_la2_256k':
-                para_key = 'ft_la2_256k'
-                
-            rope_rescale = torch.load("./evaluation/rope_rescale.pt")
+            if para_key == '128k_mis_256k':
+                para_key = 'ft_mis_256k'
+            if para_key in ['16k_mis_128k', '32k_mis_128k', '16k_mis_256k', '32k_mis_256k']:
+                para_key = 'ft_mis_128k'
+            rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
             # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
             
-            if flag_twice:
-                lambda_1 = rope_rescale[para_key] * rope_rescale[ft_model_key]
-            else: 
-                lambda_1 = rope_rescale[para_key]
+            print("$$args.max_tokens", args.max_tokens, "para_key", para_key)
+            
+            lambda_1 = rope_rescale[para_key]
         else:
             raise ValueError("args.max_tokens == None")  
-    elif args.method == "s_pi" and not args.finetuned:
-        print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
-        # use base scale
-        lambda_1 = np.full((32, 64), 1.0)
+    elif args.method == "longrope" and not args.finetuned:
+        if args.longrope_para != None:
+            print("Use input longrope para")
+            # load from .csv/.pt
+            if ".csv" in args.longrope_para:
+                lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
+            elif ".pt" in args.longrope_para:
+                lambda_1 = torch.load(args.longrope_para)
+            else:
+                raise f"file type not support: {args.longrope_para}, must in [.pt, .csv]"
+        else:
+            print("Use base scale (1.0)")
+            lambda_1 = np.full((32, 64), 1.0)
     else:
         print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
         lambda_1 = np.full((32, 64), 1.0)
@@ -262,16 +134,15 @@ def load_model(model, args):
     
     if args.method == "yarn":
         print("\n--use ", args.method)
-        from rope.LlamaYaRNScaledRotaryEmbedding import LlamaYaRNScaledRotaryEmbedding
+        from rope.MistralYaRNScaledRotaryEmbedding import MistralYaRNScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaYaRNScaledRotaryEmbedding(
+            each.self_attn.rotary_emb = MistralYaRNScaledRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
-                beta_fast=128, beta_slow=2,
             )
     
     elif args.method == "dy_yarn":
@@ -287,35 +158,33 @@ def load_model(model, args):
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 beta_fast=128
             ) 
-    if args.method == "s_pi":
+    if args.method == "longrope":
         print("--use ", args.method)
         
-        from rope.LlamaSPIScaledRotaryEmbedding import LlamaSPIScaledRotaryEmbedding
+        from rope.LlamaLongRoPEScaledRotaryEmbedding import LlamaLongRoPEScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
-        
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
         
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
         layer = 0
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaSPIScaledRotaryEmbedding(
+            each.self_attn.rotary_emb = LlamaLongRoPEScaledRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps
+                # tmps=args.tmps
             ) 
             layer += 1
     
-    elif args.method == "s_pi_start":
+    elif args.method == "longrope_start":
         print("--use ", args.method)
-        from rope.LlamaSPIScaledStartTokenRotaryEmbedding import LlamaSPIScaledStartTokenRotaryEmbedding
+        from rope.LlamaLongRoPEScaledStartTokenRotaryEmbedding import LlamaLongRoPEScaledStartTokenRotaryEmbedding
         print("args.finetuned", args.finetuned)
         
-        lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
+        lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
         
         # assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
@@ -331,66 +200,65 @@ def load_model(model, args):
         layer = 0
         print("start_token", args.stream)
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaSPIScaledStartTokenRotaryEmbedding(
+            each.self_attn.rotary_emb = LlamaLongRoPEScaledStartTokenRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps,
+                # tmps=args.tmps,
                 start_token=args.stream,
                 cos_sin_origin=cos_sin_origin
             ) 
             layer += 1
             
-    elif args.method == "dy_s_pi":
+    elif args.method == "dy_longrope":
         print("--use ", args.method)
-        from rope.LlamaDynamicSPIScaledRotaryEmbedding import LlamaDynamicSPIScaledRotaryEmbedding
+        from rope.LlamaDynamicLongRoPEScaledRotaryEmbedding import LlamaDynamicLongRoPEScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
         
-        # lambda_1 = np.loadtxt(open(args.s_pi_para, "rb"), delimiter=",", skiprows=0)
+        # lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
         
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
         layer = 0
         for each in model.model.layers:
-            each.self_attn.rotary_emb = LlamaDynamicSPIScaledRotaryEmbedding(
+            each.self_attn.rotary_emb = LlamaDynamicLongRoPEScaledRotaryEmbedding(
                 each.self_attn.head_dim, 
                 scale=scaling_factor,
                 original_max_position_embeddings=args.original_max_position_embeddings, 
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                tmps=args.tmps
+                # tmps=args.tmps
             ) 
             layer += 1
 
     return model, lambda_1
 
 
-def add_args(parser: ArgumentParser):
+# def add_args(parser: ArgumentParser):
     
-    parser.add_argument("--max-position-embeddings", type=int)
-    parser.add_argument("--original-max-position-embeddings", type=int)
+#     parser.add_argument("--max-position-embeddings", type=int)
+#     parser.add_argument("--original-max-position-embeddings", type=int)
     
-    parser.add_argument("--cache_dir", type=str)
-    parser.add_argument("--flash_attn", action="store_true")
-    parser.add_argument("--method", type=str, default="pi")
-    parser.add_argument("--s_pi_para", type=str, default="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv")
-    parser.add_argument("--tmps", type=str, default="su", help='')
-    parser.add_argument("--factor", type=float)
-    parser.add_argument("--finetuned", action="store_true")
+#     parser.add_argument("--cache_dir", type=str)
+#     parser.add_argument("--flash_attn", action="store_true")
+#     parser.add_argument("--method", type=str, default="pi")
+#     parser.add_argument("--longrope_para", type=str, default="./evolution/dim_mono/result_alpha/dim_mono_8192_result.csv")
+#     parser.add_argument("--tmps", type=str, default="su", help='')
+#     parser.add_argument("--factor", type=float)
+#     parser.add_argument("--finetuned", action="store_true")
     
-    parser.add_argument("--stream", type=int, default=0)
-    parser.add_argument("--peft-model", type=str)
-    parser.add_argument("--use_cache", action="store_true")
+#     parser.add_argument("--stream", type=int, default=0)
+#     parser.add_argument("--peft-model", type=str)
+#     parser.add_argument("--use_cache", action="store_true")
     
-    return parser
+#     return parser
 
 
 
 def load_model_and_apply_patches_mistral(model, args):
-    # return apply_patches(load_model(model, args), args)
     print(args)
     return load_model(model, args)

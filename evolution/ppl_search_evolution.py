@@ -7,7 +7,6 @@ print(current_path)
 import argparse
 import datasets
 import numpy as np
-# import evaluate
 import sys
 import torch
 import warnings
@@ -47,27 +46,32 @@ def log(text):
     except IOError as e:
         if e.errno == errno.EPIPE:
             pass
-
-# Evolution
-class History:
-    def __init__(self) -> None:
-        self.alpha_list = []
-        self.ppl_list = []
         
-    def clear(self):
-        self.alpha_list = []
-        self.ppl_list = []
+# select proper config from model
+MODEL_LAYER = 0
+MODEL_DIM = 0
 
-    def __contains__(self, other):
-        if isinstance(other, np.ndarray):
-            for item in self.alpha_list:
-                if np.array_equal(item, other):
-                    return True
-            return False
 
-    def add(self, indv):
-        self.alpha_list.append(indv[0])
-        self.ppl_list.append(indv[1])
+# # Evolution
+# class History:
+#     def __init__(self) -> None:
+#         self.alpha_list = []
+#         self.ppl_list = []
+        
+#     def clear(self):
+#         self.alpha_list = []
+#         self.ppl_list = []
+
+#     def __contains__(self, other):
+#         if isinstance(other, np.ndarray):
+#             for item in self.alpha_list:
+#                 if np.array_equal(item, other):
+#                     return True
+#             return False
+
+#     def add(self, indv):
+#         self.alpha_list.append(indv[0])
+#         self.ppl_list.append(indv[1])
 
 
 import random
@@ -90,7 +94,7 @@ def main(args):
     else:
         input_texts = datasets.load_dataset(
             args.dataset, name=args.subset, split=args.split)
-        # max_input_len = 32 * 1024
+        # max_input_len = MODEL_LAYER * 1024
         
         def tokenize(example):
             tokenized = tokenizer(
@@ -138,15 +142,23 @@ def main(args):
         result = []
         for max_length in tokens:
             
-            if "Mistral" in args.model[0][0] or "mistral" in args.model[0][0]:
+            config = transformers.AutoConfig.from_pretrained(model, cache_dir=args.cache_dir)
+            print("config", config)
+            if config.model_type == "mistral":
                 print(args.model[0])
                 from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
                 loaded, lambda_1 = load_model_and_apply_patches_mistral(model, args)
-            else:
+            elif config.model_type == "llama":
                 print(args.model[0])
                 loaded, lambda_1 = load_model_and_apply_patches(model, args)
+            else:
+                raise ValueError("Model type did not support!")
+            
             s_time = time.time()
             
+            MODEL_LAYER = config.num_hidden_layers
+            MODEL_DIM = int(config.hidden_size / config.num_attention_heads)
+            print("MODEL_LAYER, MODEL_DIM", MODEL_LAYER, MODEL_DIM)
             config_compute = [loaded, tokenizer, input_texts, tokenizer.bos_token]
             
             # set seed
@@ -157,19 +169,22 @@ def main(args):
             random.seed(seed)
      
             # load evo para from json
-            json_path = f"./evolution/{args.s_pi_method}/parameters_dict.json"
+            json_path = f"./evolution/{args.longrope_method}/parameters_dict.json"
             with open(json_path, 'r') as json_file:
                 loaded_parameters = json.load(json_file)
 
             # load init solution from csv:
-            init_alpha = np.loadtxt(open(args.s_pi_init_para, "rb"), delimiter=",", skiprows=0)
+            if args.factor == 1.0:
+                init_alpha = np.full((MODEL_LAYER, MODEL_DIM//2), 1.0     )
+            else:
+                init_alpha = np.loadtxt(open(args.longrope_init_para, "rb"), delimiter=",", skiprows=0)
             
             scale = max_length / args.original_max_position_embeddings
                    
-            if args.s_pi_method == "dim_piece_mono":
+            if args.longrope_method == "dim_piece_mono":
                 
                 from evolution.dim_piece_mono.dim_piece_mono import DimPieceMonoGeneticAlgorithm
-                assert init_alpha.shape == (64+2,), f"init_alpha shape error {init_alpha.shape}"
+                assert init_alpha.shape == (MODEL_DIM//2 + 2,), f"init_alpha shape error {init_alpha.shape}"
                 
                 genetic_algorithm = DimPieceMonoGeneticAlgorithm(
                     args, config_compute, max_length, 
@@ -181,16 +196,16 @@ def main(args):
                 best_result = genetic_algorithm.run_genetic_algorithm()
                 # best_result = [np.zeros((66)), 0]
                 
-                if best_result[0].shape != (32, 64):
+                if best_result[0].shape != (MODEL_LAYER, MODEL_DIM//2):
                     new_alpha = best_result[0][2:]
-                    assert new_alpha.shape == (64,)
-                    best_result[0] = np.tile(new_alpha, (32, 1))
+                    assert new_alpha.shape == (MODEL_DIM//2,)
+                    best_result[0] = np.tile(new_alpha, (MODEL_LAYER, 1))
               
-            elif args.s_pi_method == "dim_mono":
+            elif args.longrope_method == "dim_mono":
                 from evolution.dim_mono.dim_mono import DimMonoGeneticAlgorithm
-                if init_alpha.shape == (32,64):
+                if init_alpha.shape == (MODEL_LAYER, MODEL_DIM//2):
                     init_alpha = init_alpha[0,:]
-                assert init_alpha.shape == (64,), f"init_alpha shape error {init_alpha.shape}"
+                assert init_alpha.shape == (MODEL_DIM//2,), f"init_alpha shape error {init_alpha.shape}"
                 
                 genetic_algorithm = DimMonoGeneticAlgorithm(
                     args, config_compute, max_length, 
@@ -201,12 +216,12 @@ def main(args):
 
                 best_result = genetic_algorithm.run_genetic_algorithm()
 
-                if best_result[0].shape != (32, 64):
-                    best_result[0] = np.tile(best_result[0], (32, 1))
+                if best_result[0].shape != (MODEL_LAYER, MODEL_DIM//2):
+                    best_result[0] = np.tile(best_result[0], (MODEL_LAYER, 1))
             
-            elif args.s_pi_method == "dim_mono_n":
+            elif args.longrope_method == "dim_mono_n":
                 from evolution.dim_mono_n.dim_mono_n import DimMonoNGeneticAlgorithm
-                assert init_alpha.shape == (64+1,), f"init_alpha shape error {init_alpha.shape}"
+                assert init_alpha.shape == (MODEL_DIM//2+1,), f"init_alpha shape error {init_alpha.shape}"
                 
                 genetic_algorithm = DimMonoNGeneticAlgorithm(
                     args, config_compute, max_length, 
@@ -217,15 +232,28 @@ def main(args):
 
                 best_result = genetic_algorithm.run_genetic_algorithm()
 
-                if best_result[0].shape != (32, 64):
-                    best_result[0] = np.tile(best_result[0][1:], (32, 1))
+                if best_result[0].shape != (MODEL_LAYER, MODEL_DIM//2):
+                    best_result[0] = np.tile(best_result[0][1:], (MODEL_LAYER, 1))
             
             # save result
             max_time_budget = int(loaded_parameters["evo_scale"] * loaded_parameters["max_time_budget"])
-            filename = f"./evolution/{args.s_pi_method}/result_alpha/final_{args.s_pi_method}_{max_length}-it_{max_time_budget}.csv"
             
-            assert best_result[0].shape == (32, 64), f"best_result.shape error{best_result[0].shape}"
-            np.savetxt(get_unique_filename(filename), best_result[0], delimiter=',' )
+            result_filename = f"./evolution/search_result/final-{args.longrope_method}-{max_length}-it-{max_time_budget}.csv"
+            save_name = get_unique_filename(result_filename)
+            
+            assert best_result[0].shape == (MODEL_LAYER, MODEL_DIM//2), f"best_result.shape error{best_result[0].shape}"
+            if args.search_twice:
+                print("lambda_1.shape", lambda_1.shape)
+                print("best_result[0].shape", best_result[0].shape)
+                best_result[0] *= lambda_1
+                
+            np.savetxt(save_name, best_result[0], delimiter=',',fmt='%16.16f' )
+            
+            result_filename = f"./evolution/search_result/final-{args.longrope_method}-{max_length}-it-{max_time_budget}.pt"
+            save_name = get_unique_filename(result_filename)
+            
+            torch.save(best_result[0], save_name)
+            
             
         end_time = time.time()
         ss_time = (end_time - start_time)
@@ -240,24 +268,25 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--dataset", type=str, default="tau/scrolls")
     parser.add_argument("-s", "--subset", type=str, default="gov_report")
     parser.add_argument("-f", "--feature", type=str, default="input")
-    parser.add_argument("--max-tokens", type=int, default=8000)
-    parser.add_argument("--min-tokens", type=int, default=200)
-    parser.add_argument("--tokens-step", type=int, default=200)
+    parser.add_argument("--max_tokens", type=int, default=8000)
+    parser.add_argument("--min_tokens", type=int, default=200)
+    parser.add_argument("--tokens_step", type=int, default=200)
     parser.add_argument("--split", type=str, default="test")
     parser.add_argument("--samples", type=int, default=50)
-    parser.add_argument("--output-file", type=str)
+    parser.add_argument("--output_file", type=str)
 
     parser.add_argument("--recovery", type=str, default=None, help="Path to recovery file")
     
-    parser.add_argument("--s_pi_init_para", type=str, default="./evolution/dim_mono/init_alpha/dim_mono_8192.csv")
+    parser.add_argument("--longrope_init_para", type=str, default="./evolution/dim_mono/init_alpha/dim_mono_8192.csv")
 
-    parser.add_argument("--s_pi_method", type=str, default="dim_mono")
-    parser.add_argument("--sliding-window", type=int, default=256)
-    parser.add_argument("--original_max_position_embeddings", type=int)
+    parser.add_argument("--longrope_method", type=str, default="dim_mono")
+    parser.add_argument("--sliding_window", type=int, default=256)
+    # parser.add_argument("--original_max_position_embeddings", type=int)
+    
     parser.add_argument("--tokenized", type=str)
-    parser.add_argument("--dataset-min-tokens", type=int)
-    # parser.add_argument("--aggressive_memory", action="store_true")
-    parser.add_argument("--search_twice", action="store_true")
+    parser.add_argument("--dataset_min_tokens", type=int)
+
+    # parser.add_argument("--search_twice", action="store_true")
     parser.add_argument("--truncate", action="store_true")
 
     parser.add_argument("--sliding_window_attention", type=int)

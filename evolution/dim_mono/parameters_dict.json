@@ -1,5 +1,5 @@
 {
-    "evo_scale": 1.0,
+    "evo_scale": 0.1,
     "population_size": 64,
     "max_time_budget": 40,
     "mutation_numbers": 16,

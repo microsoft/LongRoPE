@@ -33,22 +33,34 @@ python -u needle_in_haystack.py --s_len 0 --e_len 128000\
 ) 2>&1  | tee logs/eval_llama-2-7b-80k.log
 """
 
-import tiktoken
+
 import os 
 import glob
 import json
 import tensor_parallel as tp
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from anthropic import Anthropic
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+
+try:
+    import tiktoken
+    from anthropic import Anthropic
+    from openai import OpenAI
+except:
+    print("!! Requirement not support using API of openai & anthropic.\n if you want, please `pip install openai tiktoken anthropic`")
 #from dotenv import load_dotenv
 import numpy as np
 import argparse
 from rouge_score import rouge_scorer
 import tensor_parallel as tp
 
+import sys
+current_path = os.getcwd()
+sys.path.append(current_path)
+print(current_path)
+
+
 scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
 
-from openai import OpenAI
+
 from datetime import datetime, timezone
 import time
 import torch
@@ -79,9 +91,14 @@ class LLMNeedleHaystackTester:
                  num_concurrent_requests = 1,
                  save_results = True,
                  save_contexts = True,
+                 result_path = 'result',
+                 use_cache = False,
                  final_context_length_buffer = 200,
                  seconds_to_sleep_between_completions = None,
-                 print_ongoing_status = True):
+                 print_ongoing_status = True,
+                 args_rope = None,
+                 prompt_template="base",
+                 ):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
         :param haystack_dir: The directory of text files to use as background context (or a haystack) in which the needle is to be found. Default is Paul Graham Essays.
@@ -90,6 +107,7 @@ class LLMNeedleHaystackTester:
         :param num_concurrent_requests: Due to volume, this object is set up to run concurrent requests, default = 1. Be careful of rate limits.
         :param save_results: Whether or not you would like to save your contexts to file. Warning: These will get long! Default = True
         :param save_contexts: Whether or not you would like to save your contexts to file. Warning: These will get long! Default is True.
+        :param save_contexts: choose a path to save result.
         :param final_context_length_buffer: The amount of cushion you'd like to leave off the input context to allow for the output context. Default 200 tokens
         :param context_lengths_min: The minimum length of the context. Default is 1000.
         :param context_lengths_max: The maximum length of the context. Default is 200000.
@@ -118,11 +136,15 @@ class LLMNeedleHaystackTester:
         self.save_results = save_results
         self.final_context_length_buffer = final_context_length_buffer
         self.save_contexts = save_contexts
+        self.result_path = result_path
+        self.use_cache = use_cache
         self.seconds_to_sleep_between_completions = seconds_to_sleep_between_completions
         self.print_ongoing_status = print_ongoing_status
         self.model_provider = model_provider
         self.testing_results = []
-
+        
+        self.args_rope = args_rope
+        self.prompt_template = prompt_template
         if("/" in model_name):
             self.model_version = model_name.split("/")[-1]
         else: self.model_version = model_name
@@ -153,15 +175,45 @@ class LLMNeedleHaystackTester:
         self.model_name = model_name
 
         if(self.model_provider not in ["OpenAI", "Anthropic"]):
-            self.enc = AutoTokenizer.from_pretrained(model_name)
+            self.enc = AutoTokenizer.from_pretrained(model_name, use_fast = True )
             print("loading from %s" % model_name)
 
-            self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
-                                                                use_flash_attention_2="flash_attention_2", 
-                                                                torch_dtype=torch.bfloat16,
-                                                                ).eval()
+            # self.model_to_test = None
+            if self.args_rope.method != "longrope":
+                # default setting
+                self.model_to_test = AutoModelForCausalLM.from_pretrained(model_name,
+                    use_flash_attention_2="flash_attention_2", 
+                    torch_dtype=torch.bfloat16,
+                    device_map="auto",
+                    ).eval()
 
-            self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+                self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+
+            # compute_perplexity
+            # longlora-100k
+ 
+            
+            # "--tokenized ${/mnt/yiran/teamdrive3/ExtendSeqLen}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 10 --truncate"
+            # import datasets
+            # input_texts = datasets.load_from_disk("/mnt/yiran/teamdrive3/ExtendSeqLen/proofpile-test-tokenized")
+            
+            # input_texts = input_texts.filter(
+            #     lambda x: x["tokenized_len"] >= 131072)
+            
+            # input_texts = input_texts[ :10 ]
+            # tokenizer=AutoTokenizer.from_pretrained(self.model_name, use_fast = True )
+            # from evaluation.perplexity import compute_perplexity
+            # max_length = 8192
+            # print("self.model_to_test", self.model_to_test)
+            # ppl = compute_perplexity(
+            #     model=self.model_to_test, tokenizer=tokenizer, encodings=input_texts,
+            #     add_start_token=tokenizer.bos_token is not None, max_length=max_length,
+            #     sliding_window=256, truncate=True,
+            #     use_cache=False
+            #     )['mean_perplexity']
+            # print(f"$max_length {max_length} ppl {ppl}")
+            # exit(0)
+        
         else: 
             self.model_to_test = OpenAI(api_key=openai_api_key)
             if(self.model_provider == "OpenAI"):
@@ -190,37 +242,94 @@ class LLMNeedleHaystackTester:
         # Run through each iteration of context_lengths and depths
         tasks = []
         for context_length in self.context_lengths:
-            if context_length < args.s_len or context_length > args.e_len: continue
+            if context_length < args.s_len or context_length > args.e_len: 
+                continue
+            
+            # load model
+            # change
+            if self.args_rope.method == "longrope":
+                # diff seq
+                self.args_rope.max_tokens = context_length
+                # self.args_rope.max_tokens = 128000
+                
+                config = AutoConfig.from_pretrained(model_name)
+                # print("config", config)
+                if config.model_type == "mistral":
+                    print(model_name)
+                    from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
+                    loaded, _ = load_model_and_apply_patches_mistral(model_name, self.args_rope)
+                    self.model_to_test = loaded.eval()
+                    
+                elif config.model_type == "llama":
+                    print(model_name)
+                    from evaluation.model_loader_llama import load_model_and_apply_patches
+                    loaded, _ = load_model_and_apply_patches(model_name, self.args_rope)
+                    self.model_to_test = loaded.eval()
+                    
+                else:
+                    raise ValueError("Model type did not support!")
+                
+                self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
+        
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
     def generate_prompt(self, context):
         # Generate the prompt for the Anthropic model
         # Replace the following line with the appropriate prompt structure
-        if(self.model_provider not in ["OpenAI", "Anthropic"]):
-            test_format=f"<|im_start|> This is a very long story book: <book> {context} </book>.\n Based on the content of the book, Question: {self.retrieval_question}\nAnswer:"
-            return test_format
-        else: 
-            return [
-                {
-                    "role": "system",
-                    "content": "You are a helpful AI bot that answers questions for a user. Keep your response short and direct"
-                },
-                {
-                    "role": "user",
-                    "content": context
+        if self.prompt_template == "base":
+            if(self.model_provider not in ["OpenAI", "Anthropic"]):
+                test_format=f"<|im_start|> This is a very long story book: <book> {context} </book>.\n Based on the content of the book, Question: {self.retrieval_question}\nAnswer:"
+                return test_format
+            else: 
+                return [
+                    {
+                        "role": "system",
+                        "content": "You are a helpful AI bot that answers questions for a user. Keep your response short and direct"
                     },
-                {
-                    "role": "user",
-                    "content": f"{self.retrieval_question} Don't give information outside the document or repeat your findings. The document definitely contains the answer, and I'm 100% sure. So try your best to find it."
-                },
-                {
-                    "role": "assistant",
-                    "content":"",
-                },
-                
-            ]
-
+                    {
+                        "role": "user",
+                        "content": context
+                        },
+                    {
+                        "role": "user",
+                        "content": f"{self.retrieval_question} Don't give information outside the document or repeat your findings. The document definitely contains the answer, and I'm 100% sure. So try your best to find it."
+                    },
+                    {
+                        "role": "assistant",
+                        "content":"",
+                    },
+                    
+                ]
+        elif self.prompt_template == "SIMPLE_TEMPLATE":
+            from prompt import SIMPLE_TEMPLATE
+            test_format = SIMPLE_TEMPLATE.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1":
+            from prompt import ANTHROPIC_TEMPLATE_REV1
+            test_format = ANTHROPIC_TEMPLATE_REV1.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV2":
+            from prompt import ANTHROPIC_TEMPLATE_REV2
+            test_format = ANTHROPIC_TEMPLATE_REV2.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_ORIGINAL":
+            from prompt import ANTHROPIC_TEMPLATE_ORIGINAL
+            test_format = ANTHROPIC_TEMPLATE_ORIGINAL.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "GEMINI_TEMPLATE":
+            from prompt import GEMINI_TEMPLATE
+            test_format = GEMINI_TEMPLATE.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "GEMINI_TEMPLATE2":
+            from prompt import GEMINI_TEMPLATE2
+            test_format = GEMINI_TEMPLATE2.format(question=self.retrieval_question, context=context)
+            return test_format
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1_ED":
+            from prompt import ANTHROPIC_TEMPLATE_REV1_ED
+            test_format = ANTHROPIC_TEMPLATE_REV1_ED.format(question=self.retrieval_question, context=context)
+            return test_format
+    
     def evaluate_and_log(self, context_length, depth_percent):
         # Checks to see if you've already checked a length/percent/version.
         # This helps if the program stop running and you want to restart later
@@ -230,12 +339,19 @@ class LLMNeedleHaystackTester:
                 return
             else:
                 print("result does not exist, testing")
-
+                
+        print("begin generate_context")
         # Go generate the required length context and place your needle statement in
         context = self.generate_context(context_length, depth_percent)
 
+        print("begin generate_prompt")
         # Prepare your message to send to the model you're going to evaluate
         prompt = self.generate_prompt(context)
+        
+        print("$rm bos")
+        prompt = prompt.replace("<s>", "")
+        print(prompt)
+        
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):
             # import ipdb; ipdb.set_trace()
@@ -247,17 +363,33 @@ class LLMNeedleHaystackTester:
             )
             response = response.choices[0].message.content
         else:
+            print("begin tokenizer")
+            # print("prompt[:, -100:]", prompt[-100:])
             prompt = self.enc(prompt, return_tensors="pt")
+            print("end tokenizer")
+            
             input_ids = prompt['input_ids'].to(self.model_to_test.device)
-            # change
+            if input_ids[0, -1] == self.enc.eos_token_id:
+                input_ids = input_ids[:, :-1]
+            
+            print("input_ids[:, -5:]", input_ids[:, -5:])
+            
+            print("begin generate, context_length", context_length)
+            
+            # test ppl
             with torch.no_grad():
-                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50)
+                # output_ids = self.model_to_test.generate(input_ids, max_new_tokens=50, use_cache=self.use_cache)
+                output_ids = self.model_to_test.generate(input_ids, max_new_tokens=32, use_cache=self.use_cache)
                 response = self.enc.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
+            print("end generate")
+                
 
         test_end_time = time.time()
         test_elapsed_time = test_end_time - test_start_time
+        
+        print(f"$$self.needle,\"{self.needle}\"\nresponse,\"{response}\"\n")
         score = scorer.score(self.needle, response)['rouge1'].fmeasure*10
-
+        
         results = {
             # 'context' : context, # Uncomment this line if you'd like to save the context the model was asked to retrieve from. Warning: This will become very large.
             'model' : self.model_to_test_description,
@@ -293,19 +425,23 @@ class LLMNeedleHaystackTester:
             if not os.path.exists(f'contexts/{self.model_version}'):
                 os.makedirs(f'contexts/{self.model_version}')
 
-            with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
-                f.write(context)
+            # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
+            #     f.write(context)
+            with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
+                f.write(context)  
+
             
         if self.save_results:
             # Save the context to file for retesting
-            if not os.path.exists('results'):
-                os.makedirs('results')
             
-            if not os.path.exists(f'results/{self.model_version}'):
-                os.makedirs(f'results/{self.model_version}')
+            if not os.path.exists(self.result_path):
+                os.makedirs(self.result_path)
+            
+            if not os.path.exists(f'{self.result_path}/{self.model_version}'):
+                os.makedirs(f'{self.result_path}/{self.model_version}')
 
             # Save the result to file for retesting
-            p = f'results/{self.model_version}/{context_file_location}_results.json'
+            p = f'{self.result_path}/{self.model_version}/{context_file_location}_results.json'
             print("Writing at %s" % p)
             with open(p, 'w') as f:
                 json.dump(results, f)
@@ -327,7 +463,7 @@ class LLMNeedleHaystackTester:
                     depth_percent_met = result['depth_percent'] == depth_percent
                     version_met = result.get('version', 1) == self.results_version
                     model_met = result['model'] == self.model_name
-                    # import ipdb; ipdb.set_trace()
+                    
                     if context_length_met and depth_percent_met and version_met and model_met:
                         return True
         return False
@@ -359,6 +495,11 @@ class LLMNeedleHaystackTester:
         tokens_needle = self.encode_text_to_tokens(self.needle)
         tokens_context = self.encode_text_to_tokens(context)
 
+        print("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+        if tokens_needle[-1] == self.enc.eos_token_id:
+            tokens_needle = tokens_needle[:-1]
+        print("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+        
         # Reducing the context length by 150 buffer. This is to account for system message, the user question, and response.
         context_length -= self.final_context_length_buffer
 
@@ -411,8 +552,13 @@ class LLMNeedleHaystackTester:
     def read_context_files(self):
         context = ""
         max_context_length = max(self.context_lengths)
-
+        
+        try_read_context_files = 0
         while self.get_context_length_in_tokens(context) < max_context_length:
+            try_read_context_files += 1
+            print("try_read_context_files", try_read_context_files)
+            print("curr len:", self.get_context_length_in_tokens(context))
+            
             for file in glob.glob(f"{self.haystack_dir}/*.txt"):
                 with open(file, 'r') as f:
                     context += f.read()
@@ -458,7 +604,10 @@ class LLMNeedleHaystackTester:
         if self.print_ongoing_status:
             self.print_start_test_summary()
         #asyncio.run(self.run_test())
+        total_start_time = time.time()
         self.run_test(args)
+        total_end_time = time.time()
+        print("Total time:", total_end_time -total_start_time)
 
 
 if __name__ == "__main__":
@@ -471,7 +620,25 @@ if __name__ == "__main__":
     parser.add_argument('--model_name_suffix', type=str, default=None, help='name of model')
     parser.add_argument('--model_provider', type=str, default="LLaMA", help='which model to use')
     parser.add_argument('--api_key', type=str, default="", help='OpenAI API Key')
-    # parser = add_args(parser)
+    
+    # parser.add_argument('--use_cache', type=bool, default=False, help='use KV cache')
+    parser.add_argument('--context_lengths_max', type=int, default=128000, help='max context lengths')
+    parser.add_argument('--context_lengths_min', type=int, default=2048, help='min context lengths')
+    parser.add_argument('--context_lengths_num_intervals', type=int, default=40, help='context_lengths_num_intervals')
+    parser.add_argument('--document_depth_percent_intervals', type=int, default=10, help='document_depth_percent_intervals')
+    
+    parser.add_argument('--haystack_dir', type=str, default="./evaluation/needle/PaulGrahamEssays", help='path to PaulGrahamEssays')
+    parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
+    
+    parser.add_argument("--max_tokens", type=int, default=8192)
+    parser.add_argument("--prompt_template", type=str, default="base")
+    # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
+    #                     )
+    
+    from evaluation.model_loader_llama import add_args
+    # parser= argparse.ArgumentParser()
+    parser = add_args(parser)
+    
     args = parser.parse_args()
 
     if(args.model_path is not None):
@@ -486,7 +653,16 @@ if __name__ == "__main__":
                                  model_provider=args.model_provider,
                                  save_contexts=True,
                                  save_results=True,
-                                 openai_api_key=args.api_key
+                                 openai_api_key= args.api_key,
+                                 context_lengths_min= args.context_lengths_min,
+                                 context_lengths_max= args.context_lengths_max,
+                                 document_depth_percent_intervals=args.document_depth_percent_intervals, 
+                                 haystack_dir = args.haystack_dir,
+                                 result_path = args.result_path,
+                                 use_cache = args.use_cache,
+                                 context_lengths_num_intervals = args.context_lengths_num_intervals,
+                                 args_rope = args,
+                                 prompt_template=args.prompt_template
                                  )
 
     ht.start_test(args)

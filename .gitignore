@@ -416,3 +416,9 @@ evolution/search_result/final-dim_mono-4100-it-4_1_2.csv
 evaluation/tmp_re.py
 evolution/search_result/final-dim_mono-4100-it-4_1_2.pt
 evaluation/log.txt
+
+# cube
+cube_graph.pt
+dist_param_map.pt
+fullmodel.pt.*
+gencode*.py

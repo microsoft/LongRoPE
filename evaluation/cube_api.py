@@ -108,11 +108,11 @@ def generate(args, model, infer_fn, config, tokenizer, prompt_ids, pass_key=None
     if args.use_cache:
         if config.model_type == "mistral" or config.model_type == "Mistral":
             assert args.tp_size < 9, "tp_size should be no more than 8"
-            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
         else:
-            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
     else:
         past_key_values = None
     
@@ -260,11 +260,11 @@ def compile_model(loaded, args, config):
         if args.use_cache:
             if config.model_type == "mistral" or config.model_type == "Mistral":
                 assert args.tp_size < 9, "tp_size should be no more than 8"
-                past_key_values = [(torch.zeros(1, trace_size, (8 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                    torch.zeros(1, trace_size, (8 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+                past_key_values = [(torch.zeros(1, trace_size, (8 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                    torch.zeros(1, trace_size, (8 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
             else:
-                past_key_values = [(torch.zeros(1, trace_size, (32 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                    torch.zeros(1, trace_size, (32 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+                past_key_values = [(torch.zeros(1, trace_size, (32 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                    torch.zeros(1, trace_size, (32 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
         else:
             past_key_values = None
         method = ["pi" for _ in range(32)]

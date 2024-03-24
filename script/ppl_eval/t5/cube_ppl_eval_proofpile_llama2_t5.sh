@@ -1,5 +1,4 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=4
 # export HF_DATASETS_CACHE="/path/to/store/model"
 export HF_DATASETS_CACHE="../cache"
 # path_dir=/your/path/to/store/model/or/dataset
@@ -60,12 +59,44 @@ config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "lo
 config_list=("longrope_128k")
 echo "dataset PROOFPILE 10sample"
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
-max_tokens_list=(32768)
+max_tokens_list=(4096)
 
+
+# gpu_num=1
+# for config in "${config_list[@]}"; do
+#     for max_tokens in "${max_tokens_list[@]}"; do
+#         echo "####### $config, max-tokens=$max_tokens #############"
+#         CUDA_VISIBLE_DEVICES=0,1,2,3 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
+#             --nproc_per_node=$gpu_num \
+#             --master_port 29520 \
+#             evaluation/perplexity.py \
+#             ${PROOFPILE_128k}\
+#             ${setting[$config]} \
+#             --max_tokens $max_tokens \
+#             --min_tokens $max_tokens \
+#             --tokens_step 2048 \
+#             --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
+#             --original_max_position_embeddings 4096 \
+#             --flash_attn \
+#             ${save_memory} \
+#             --cache_dir $cache_dir \
+#             --use_cube \
+#             --rope_method s_pi \
+#             --rope_tmps su \
+#             --use_cache \
+#             --tp_size $gpu_num \
+#             --cube_trace
+#     done
+# done
+
+gpu_num=4
 for config in "${config_list[@]}"; do
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"
-        python evaluation/perplexity.py \
+        CUDA_VISIBLE_DEVICES=0,1,2,3 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
+            --nproc_per_node=$gpu_num \
+            --master_port 29520 \
+            evaluation/perplexity.py \
             ${PROOFPILE_128k}\
             ${setting[$config]} \
             --max_tokens $max_tokens \
@@ -75,9 +106,16 @@ for config in "${config_list[@]}"; do
             --original_max_position_embeddings 4096 \
             --flash_attn \
             ${save_memory} \
-            --cache_dir $cache_dir
+            --cache_dir $cache_dir \
+            --use_cube \
+            --rope_method s_pi \
+            --rope_tmps su \
+            --use_cache \
+            --tp_size $gpu_num
     done
 done
+
+
 
 # max_tokens_list=(262144)
 # for config in "${config_list[@]}"; do

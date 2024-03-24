@@ -34,6 +34,11 @@ class History:
                 if item_str == other_str:
                     return True
             return False
+        if isinstance(other, float):
+            for item in self.alpha_list:
+                if item == other:
+                    return True
+            return False
 
     def add(self, indv):
         if not self.__contains__(indv[0]):
@@ -532,8 +537,11 @@ class GeneticAlgorithm:
         if self.verbose:
             log('-' * 50)
             np.set_printoptions(threshold=np.inf, linewidth=np.inf)
-            best_evo_alpha_full = np.array_str(best_evo_alpha[0], precision=4, suppress_small=True)
-            
+            print("best_evo_alpha", best_evo_alpha)
+            if not isinstance(best_evo_alpha[0], float):
+                best_evo_alpha_full = np.array_str(best_evo_alpha[0], precision=4, suppress_small=True)
+            else:
+                best_evo_alpha_full = best_evo_alpha[0]
             log(f'[best_valids] {best_valids}')
             log(f'[best_evo_alpha] {best_evo_alpha}\n [FULL]: \n{best_evo_alpha_full}' )
         

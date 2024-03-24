@@ -83,59 +83,59 @@ def load_model(model, args):
     
     
     # ft: 4k 8k 256k 512k 1024k 
-    if args.method == "longrope":
-        if args.finetuned and not args.search_twice:
-            print("Use defaut longrope para: rope_scale-new.pt")
-            if args.max_tokens != None:
-                seq_len = (args.max_tokens + 1023) // 1024
-                seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
-                for i in range(len(seq_range)-1):
-                    if seq_range[i] <= seq_len <= seq_range[i+1]:   
-                        seq_len = seq_range[i+1]
-                        break
-                
-                if config.model_type == "llama":
-                    model_type = "la2"
-                else:
-                    raise ValueError("model_type is not llama")  
-                ft_model_len = (config.max_position_embeddings + 1023) // 1024
-
-                flag_twice = False
-                ft_model_key = None
-                
-                if seq_len == ft_model_len:
-                    para_key = f"ft_{model_type}_{ft_model_len}k"
-                elif seq_len > ft_model_len:
-                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
-                    flag_twice = True
-                    ft_model_key = f"ft_{model_type}_{ft_model_len}k"
-                else:
-                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
-                
-                # 128k la2 256k
-                if para_key == '128k_la2_256k':
-                    para_key = 'ft_la2_256k'
-                    
-                rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
-                
-                lambda_1 = rope_rescale[para_key]
+    if args.finetuned and args.method == "longrope":
+        print("Use defaut longrope para: rope_scale-new.pt")
+        if args.max_tokens != None:
+            seq_len = (args.max_tokens + 1023) // 1024
+            seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
+            for i in range(len(seq_range)-1):
+                if seq_range[i] <= seq_len <= seq_range[i+1]:   
+                    seq_len = seq_range[i+1]
+                    break
             
+            if config.model_type == "llama":
+                model_type = "la2"
             else:
-                raise ValueError("args.max_tokens == None")  
+                raise ValueError("model_type is not llama")  
+            ft_model_len = (config.max_position_embeddings + 1023) // 1024
+
+            flag_twice = False
+            ft_model_key = None
+            
+            if seq_len == ft_model_len:
+                para_key = f"ft_{model_type}_{ft_model_len}k"
+            elif seq_len > ft_model_len:
+                para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                flag_twice = True
+                ft_model_key = f"ft_{model_type}_{ft_model_len}k"
+            else:
+                para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+            
+            # 128k la2 256k
+            if para_key == '128k_la2_256k':
+                para_key = 'ft_la2_256k'
+                
+            print("args.max_tokens", args.max_tokens, "para_key", para_key)
+            rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
+            
+            lambda_1 = rope_rescale[para_key]
         
         else:
+            raise ValueError("args.max_tokens == None")  
+    
+    elif args.method == "longrope" and not args.finetuned:
+        if args.longrope_para != None:
             print("Use input longrope para")
-            if args.longrope_para != None:
-                # load from .csv/.pt
-                if ".csv" in args.longrope_para:
-                    lambda_1 = np.loadtxt(open(args.longrope_init_para, "rb"), delimiter=",", skiprows=0)
-                elif ".pt" in args.longrope_para:
-                    lambda_1 = torch.load(args.longrope_init_para)
-                else:
-                    raise f"file type not support: {args.longrope_para}"
+            # load from .csv/.pt
+            if ".csv" in args.longrope_para:
+                lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
+            elif ".pt" in args.longrope_para:
+                lambda_1 = torch.load(args.longrope_para)
             else:
-                # use base scale
-                lambda_1 = np.full((32, 64), 1.0)
+                raise f"file type not support: {args.longrope_para}"
+        else:
+            print("Use base scale (1.0)")
+            lambda_1 = np.full((32, 64), 1.0)
     else:
         # use base scale
         lambda_1 = np.full((32, 64), 1.0)
@@ -340,6 +340,11 @@ def add_args(parser: ArgumentParser):
     parser.add_argument("--start_token", type=int, default=0)
     parser.add_argument("--peft_model", type=str)
     parser.add_argument("--tmps", type=str, default="su")
+    
+    
+    # mistral max context window
+    parser.add_argument("--sliding_window_attention", type=int)
+    
     
     # use KV cache
     parser.add_argument("--use_cache", action="store_true")

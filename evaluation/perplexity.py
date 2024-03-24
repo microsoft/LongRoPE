@@ -246,8 +246,6 @@ if __name__ == "__main__":
     parser.add_argument("--output_file", type=str)
     # parser.add_argument("--original_max_position_embeddings", type=int, default=4096)
     
-    # mistral max context window
-    parser.add_argument("--sliding_window_attention", type=int)
     
     
     main(add_args(parser).parse_args())

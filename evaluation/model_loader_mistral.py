@@ -32,7 +32,6 @@ def load_model(model, args):
     print("aggressive_mem_causal_lm", args.aggressive_mem_causal_lm)
     if args.aggressive_mem_causal_lm:
         transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
-        
     print("aggressive-mem-decoder", args.aggressive_mem_decoder)
     if args.aggressive_mem_decoder:
         transformers.models.mistral.modeling_mistral.MistralDecoderLayer.forward = forward_mistral_decoder_layer
@@ -43,9 +42,6 @@ def load_model(model, args):
         print("use replace flash attn")
         # replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True)
         replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True, aggressive_memory=args.aggressive_mem_attn)
-            # replace_llama_attn(use_flash_attn=True, use_full=True, inference=True)
-        # else:
-        #     raise ValueError("name not in mistral")
     
     model_name = model
 
@@ -63,11 +59,13 @@ def load_model(model, args):
     scaling_factor = float(args.factor)
     
     print(model_name)
+    print("config.torch_dtype,", config.torch_dtype)
     model = transformers.AutoModelForCausalLM.from_pretrained(
         model_name,
         config=config,
         cache_dir=args.cache_dir,
-        torch_dtype=torch.float16,
+        # torch_dtype=torch.float16,
+        torch_dtype=config.torch_dtype,
         device_map="auto",
         # trust_remote_code=True if "Yarn" in model_name else False
     )   
@@ -105,17 +103,29 @@ def load_model(model, args):
             # 128k la2 256k
             if para_key in ['128k_mis_256k', '16k_mis_128k', '32k_mis_128k', '16k_mis_256k','32k_mis_256k',]:
                 para_key = 'ft_mis_256k'
-                
-            rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")
+            if para_key in ['16k_mis_128k', '32k_mis_128k', '16k_mis_256k', '32k_mis_256k']:
+                para_key = 'ft_mis_128k'
+            rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
             # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
-
+            
+            print("$$args.max_tokens", args.max_tokens, "para_key", para_key)
+            
             lambda_1 = rope_rescale[para_key]
         else:
             raise ValueError("args.max_tokens == None")  
     elif args.method == "longrope" and not args.finetuned:
-        print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
-        # use base scale
-        lambda_1 = np.full((32, 64), 1.0)
+        if args.longrope_para != None:
+            print("Use input longrope para")
+            # load from .csv/.pt
+            if ".csv" in args.longrope_para:
+                lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
+            elif ".pt" in args.longrope_para:
+                lambda_1 = torch.load(args.longrope_para)
+            else:
+                raise f"file type not support: {args.longrope_para}, must in [.pt, .csv]"
+        else:
+            print("Use base scale (1.0)")
+            lambda_1 = np.full((32, 64), 1.0)
     else:
         print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
         lambda_1 = np.full((32, 64), 1.0)

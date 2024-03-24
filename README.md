@@ -18,7 +18,14 @@
 - `cd s-PI`
   - `bash ./script/pk_eval/pk_test_ft_la2.sh`
 
-###  
+### HF Eval
+- `conda create -n longrope_hf_eval python==3.10.13`
+- `conda activate longrope_hf_eval`
+- `cd evaluation/lm-evaluation-harness/`
+- `pip install -e .`
+- `cd ../../`
+- `pip install -r requiements.txt`
+
 
 ### Search:
 #### Search the scale for base(Llama2-7b 4k) to 256k sequences

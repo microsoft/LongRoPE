@@ -22,7 +22,7 @@ echo "prompt_name: $prompt_name"
 mistral_256k="${path_team}/ft_out_model/longrope-256k-sft-mis/mis-256k-longalphaca-12k/ck-${ck_step}"
 # ExtendSeqLen/ft_out_model/longrope-256k-sft-mis/mis-256k-longalphaca-12k/ck-1_100/
 
-echo "cube-mis-256k-sft needle new"
+echo "cube-mis-256k-sft needle origin"
 
 declare -A setting
 

@@ -37,33 +37,32 @@ PROOFPILE_256k="--tokenized ${path_team}/proofpile-test-tokenized-mistral --data
 cache_dir="../cache_dir"
 output_dir=./evaluation/result
 
-save_memory="\
---aggressive_mem_causal_lm"
+save_memory=""
 # save_memory="" # check
 
 # config_list=("base_mistral" "yarn_64k_mistral" "yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral")
 config_list=("longrope_128k_mistral") # check
 
 echo "dataset PROOFPILE 10sample"
-max_tokens_list=(4096 8192 32768 65536 98304 131072)
-# max_tokens_list=(4096)
+# max_tokens_list=(4096 8192 32768 65536 98304 131072)
+max_tokens_list=(4096 131072)
 
-# for config in "${config_list[@]}"; do
-#     for max_tokens in "${max_tokens_list[@]}"; do
-#         echo "####### $config, max-tokens=$max_tokens #############"
-#         python evaluation/perplexity.py \
-#             ${PROOFPILE_128k}\
-#             ${setting[$config]} \
-#             --max_tokens $max_tokens \
-#             --min_tokens $max_tokens \
-#             --tokens_step 2048 \
-#             --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
-#             --sliding_window_attention 131072 \
-#             --flash_attn \
-#             ${save_memory} \
-#             --cache_dir $cache_dir
-#     done
-# done
+for config in "${config_list[@]}"; do
+    for max_tokens in "${max_tokens_list[@]}"; do
+        echo "####### $config, max-tokens=$max_tokens #############"
+        python evaluation/perplexity.py \
+            ${PROOFPILE_128k}\
+            ${setting[$config]} \
+            --max_tokens $max_tokens \
+            --min_tokens $max_tokens \
+            --tokens_step 2048 \
+            --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
+            --sliding_window_attention 131072 \
+            --flash_attn \
+            ${save_memory} \
+            --cache_dir $cache_dir
+    done
+done
 
 max_tokens_list=(262144)
 for max_tokens in "${max_tokens_list[@]}"; do

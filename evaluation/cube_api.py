@@ -316,3 +316,72 @@ def compile_model(loaded, args, config):
         return model, infer_fn
     else:
         return loaded, None 
+
+def compile_model_ppl(loaded, args, config, length):
+        
+    trace_size = length
+    input_ids = torch.full((1, trace_size), 256, dtype=torch.long).to(torch.device('cuda'))
+    print("prompt_ids shape: ", input_ids.shape)
+    print("trace_size: ", trace_size)
+    
+    labels = input_ids.to(input_ids.device)
+
+    if config.model_type == "mistral" or config.model_type == "Mistral":
+        from evaluation.model_executor.long_seq_models_ppl.Mistral.policy.spmd import PASSingle, PASMegatronTP
+    else:
+        from evaluation.model_executor.long_seq_models_ppl.llama2.policy.spmd import PASSingle, PASMegatronTP
+    
+    if args.tp_size > 1:
+        policy = PASMegatronTP
+    else:
+        policy = PASSingle
+                    
+    if args.cube_trace:
+        lfile = None
+        sfile = "cube_graph.pb"
+    else:
+        lfile = "cube_graph.pb"
+        sfile = None
+
+    method = ["pi" for _ in range(32)]
+    tmps = ["non" for _ in range(32)]
+    lambda_1 = np.zeros((32, 64))
+    lambda_tensor = torch.from_numpy(lambda_1).to(torch.device('cuda'))
+    scaling_factor = [1.0 for _ in range(32)]
+    finetuned = [False for _ in range(32)]
+    start_token= [0 for _ in range(32)]            
+    if args.sliding_window_attention is None:
+        rep_sliding_window_attention = [args.max_tokens for _ in range(32)]
+    else:
+        rep_sliding_window_attention = [args.sliding_window_attention for _ in range(32)]
+        
+    @cube.compile(loaded, input_ids, labels, method, tmps, lambda_tensor, \
+        scaling_factor, finetuned, start_token, rep_sliding_window_attention, \
+        PAS=policy, load_graph_file=lfile, save_graph_file=sfile, override=True, model_dynamic_shape=True)
+    def infer(model: torch.nn.Module, input_ids: torch.Tensor, labels: torch.Tensor, method: List[str], \
+                    tmps: List[str], lamda_1: torch.Tensor, scaling_factor: List[float], \
+                        finetuned: List[bool], start_token: List[int], sliding_window_attention: List[int]):
+        with torch.no_grad():
+            outputs = model(input_ids, 
+                            labels,
+                            method,
+                            tmps,
+                            lamda_1,
+                            scaling_factor,
+                            finetuned,
+                            start_token,
+                            sliding_window_attention,
+                            )
+        return outputs
+
+    print("Complete the compilation of the model")
+    del loaded
+    del input_ids
+    del labels
+    model = cube.load_model()
+    infer_fn = (infer,)
+    
+    # model = cube.load_model()
+    # infer_fn = (cube.load_default_schedule(), )
+    
+    return model, infer_fn

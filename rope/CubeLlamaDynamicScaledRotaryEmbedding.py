@@ -107,7 +107,8 @@ def apply_rotary_embd(
         start_token: int,
         dim: int,
         base: int,
-        original_max_position_embeddings: int, 
+        original_max_position_embeddings: int,
+        datatype: torch.dtype,
         ):
     
     _, q_len = position_ids.shape
@@ -171,8 +172,8 @@ def apply_rotary_embd(
     # self.register_buffer("cos_cached", emb_cos.to(dtype), persistent=False)
     # self.register_buffer("sin_cached", emb_sin.to(dtype), persistent=False)
 
-    cos = emb_cos[:, :, :q_len, ...].to(dtype=torch.bfloat16).transpose(1, 2)
-    sin = emb_sin[:, :, :q_len, ...].to(dtype=torch.bfloat16).transpose(1, 2)
+    cos = emb_cos[:, :, :q_len, ...].to(dtype=datatype).transpose(1, 2)
+    sin = emb_sin[:, :, :q_len, ...].to(dtype=datatype).transpose(1, 2)
     return cos, sin
 
 class CubeLlamaDynamicScaledRotaryEmbedding(torch.nn.Module):
@@ -182,12 +183,13 @@ class CubeLlamaDynamicScaledRotaryEmbedding(torch.nn.Module):
                  scale=1.0,
                  base=10000, device=None, 
                  original_max_position_embeddings=4096,
-                #  cos_sin_origin=None
+                 dtype=torch.float16,
                 ):
         super().__init__()
         
         self.dim = dim
         self.base = base
+        self.dtype = dtype
         self.max_position_embeddings = max_position_embeddings
         self.original_max_position_embeddings = original_max_position_embeddings
         # self.cos_sin_origin = cos_sin_origin
@@ -248,5 +250,6 @@ class CubeLlamaDynamicScaledRotaryEmbedding(torch.nn.Module):
             self.dim,
             self.base,
             self.original_max_position_embeddings,
+            self.dtype,
         )
         

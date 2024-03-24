@@ -52,7 +52,7 @@ save_memory="\
 # save_memory="" # check
 
 config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
-# config_list=("base") # check
+config_list=("longrope_128k") # check
 
 echo "dataset PROOFPILE 10sample"
 max_tokens_list=(4096 8192 32768 65536 98304 131072)

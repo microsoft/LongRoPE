@@ -6,10 +6,8 @@ from torch import nn
 
 from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
-from transformers.utils import is_flash_attn_available
 
-if is_flash_attn_available():
-    from flash_attn import flash_attn_func, flash_attn_with_kvcache
+from flash_attn import flash_attn_func, flash_attn_with_kvcache
 
 # fused kernels
 from xformers.ops.rmsnorm import rms_norm

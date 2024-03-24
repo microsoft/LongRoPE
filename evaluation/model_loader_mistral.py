@@ -32,7 +32,6 @@ def load_model(model, args):
     print("aggressive_mem_causal_lm", args.aggressive_mem_causal_lm)
     if args.aggressive_mem_causal_lm:
         transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
-
     print("aggressive-mem-decoder", args.aggressive_mem_decoder)
     if args.aggressive_mem_decoder:
         transformers.models.mistral.modeling_mistral.MistralDecoderLayer.forward = forward_mistral_decoder_layer
@@ -43,9 +42,6 @@ def load_model(model, args):
         print("use replace flash attn")
         # replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True)
         replace_mistral_attn(use_flash_attn=True, use_full=True, inference=True, aggressive_memory=args.aggressive_mem_attn)
-            # replace_llama_attn(use_flash_attn=True, use_full=True, inference=True)
-        # else:
-        #     raise ValueError("name not in mistral")
     
     model_name = model
 
@@ -105,7 +101,7 @@ def load_model(model, args):
                 para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
             
             # 128k la2 256k
-            if para_key == '128k_mis_256k':
+            if para_key in ['128k_mis_256k', '16k_mis_128k', '32k_mis_128k', '16k_mis_256k','32k_mis_256k',]:
                 para_key = 'ft_mis_256k'
             if para_key in ['16k_mis_128k', '32k_mis_128k', '16k_mis_256k', '32k_mis_256k']:
                 para_key = 'ft_mis_128k'

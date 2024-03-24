@@ -54,6 +54,9 @@ def load_model(model, args):
         cache_dir=args.cache_dir,   
     )
     
+    MODEL_LAYER = 32
+    MODEL_DIM = 128
+    
     scaling_factor = float(args.factor)
 
     if args.method == "pi":
@@ -67,10 +70,9 @@ def load_model(model, args):
         model_name,
         config=config,
         cache_dir=args.cache_dir,
-        # torch_dtype=torch.float16,
         torch_dtype=config.torch_dtype,
+        # torch_dtype=torch.bfloat16,
         device_map="auto",
-        # trust_remote_code=True if "Yarn-Llama-2-7b-64k" in args.model[0][0] else False,
         trust_remote_code=False
     )   
     
@@ -212,7 +214,7 @@ def load_model(model, args):
                 cos_sin_origin=cos_sin_origin
             ) 
             layer += 1
-        
+    
     elif args.method == "dy_longrope":
         print("--use ", args.method)
         from rope.LlamaDynamicLongRoPEScaledRotaryEmbedding import LlamaDynamicLongRoPEScaledRotaryEmbedding
@@ -245,6 +247,64 @@ def load_model(model, args):
                 scaling_factor=scaling_factor,
                 rope_theta=config.rope_theta  
             ) 
+    
+    elif args.method == "pi_start":
+        print("--use ", args.method)
+        from rope.LlamaLongRoPEScaledStartTokenRotaryEmbedding import LlamaLongRoPEScaledStartTokenRotaryEmbedding
+        print("args.finetuned", args.finetuned)
+    
+        from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
+        
+        seq_len = args.max_tokens
+        tmp_device = "cpu"
+        rotary_emb_origin = LlamaRotaryEmbedding(dim=model.model.layers[0].self_attn.head_dim, max_position_embeddings=seq_len, device=tmp_device)
+        input_x = torch.zeros((1,),dtype=torch.float16, device=tmp_device)
+        cos_sin_origin = rotary_emb_origin.forward(x=input_x, seq_len=seq_len)
+        # cos_sin_origin=None
+        
+        lambda_pi = np.full((MODEL_LAYER, MODEL_DIM//2), scaling_factor)
+        layer = 0
+        print("start_token", args.start_token)
+        for each in model.model.layers:
+            each.self_attn.rotary_emb = LlamaLongRoPEScaledStartTokenRotaryEmbedding(
+                each.self_attn.head_dim, 
+                scale=scaling_factor,
+                original_max_position_embeddings=args.original_max_position_embeddings, 
+                finetuned=args.finetuned, 
+                device=each.self_attn.rotary_emb.inv_freq.device,
+                lambda_1=lambda_pi[layer, :],
+                tmps="non",
+                start_token=args.start_token,
+                cos_sin_origin=cos_sin_origin
+            ) 
+            layer += 1
+
+    elif args.method == "dy_ntk_start":
+        print("--use ", args.method)
+        from rope.LlamaDynamicNTKScaledStartTokenRotaryEmbedding import LlamaDynamicNTKScaledStartTokenRotaryEmbedding
+        print("args.finetuned", args.finetuned)
+    
+        from transformers.models.llama.modeling_llama import LlamaRotaryEmbedding
+        
+        seq_len = args.max_tokens
+        tmp_device = "cpu"
+        rotary_emb_origin = LlamaRotaryEmbedding(dim=model.model.layers[0].self_attn.head_dim, max_position_embeddings=seq_len, device=tmp_device)
+        input_x = torch.zeros((1,),dtype=torch.float16, device=tmp_device)
+        cos_sin_origin = rotary_emb_origin.forward(x=input_x, seq_len=seq_len)
+        # cos_sin_origin=None
+
+        print("start_token", args.start_token)
+        print("scaling_factor", scaling_factor)
+        for each in model.model.layers:
+            each.self_attn.rotary_emb = LlamaDynamicNTKScaledStartTokenRotaryEmbedding(
+                each.self_attn.head_dim, 
+                scale=scaling_factor,
+                original_max_position_embeddings=args.original_max_position_embeddings, 
+                device=each.self_attn.rotary_emb.inv_freq.device,
+                start_token=args.start_token,
+                cos_sin_origin=cos_sin_origin
+            ) 
+    
     elif args.method not in ["pi", "dy_ntk"]:
         raise ValueError(
                 f"No support {args.method}"
@@ -261,7 +321,8 @@ def add_args(parser: ArgumentParser):
     
     parser.add_argument("--cache_dir", type=str)
     parser.add_argument("--method", type=str, default="pi", 
-                        choices=["pi", "ntk", "dy_ntk", "yarn", "dy_yarn", "longrope", "dy_longrope", "longrope_start"])
+                        # choices=["pi", "ntk", "dy_ntk", "yarn", "dy_yarn", "longrope", "dy_longrope", "longrope_start"]
+                        )
     
     # search eval
     parser.add_argument("--longrope_para", type=str, default=None)
@@ -278,6 +339,7 @@ def add_args(parser: ArgumentParser):
     
     parser.add_argument("--start_token", type=int, default=0)
     parser.add_argument("--peft_model", type=str)
+    parser.add_argument("--tmps", type=str, default="su")
     
     
     # mistral max context window

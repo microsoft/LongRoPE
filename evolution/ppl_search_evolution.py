@@ -235,6 +235,22 @@ def main(args):
                 if best_result[0].shape != (MODEL_LAYER, MODEL_DIM//2):
                     best_result[0] = np.tile(best_result[0][1:], (MODEL_LAYER, 1))
             
+            elif args.longrope_method == "pi_static":
+                from evolution.pi_static.pi_static import PIStaticGeneticAlgorithm
+                init_alpha = args.factor
+                # assert init_alpha.shape == (MODEL_DIM//2+1,), f"init_alpha shape error {init_alpha.shape}"
+                
+                genetic_algorithm = PIStaticGeneticAlgorithm(
+                    args, config_compute, max_length, 
+                    loaded_parameters = loaded_parameters,
+                    verbose = True, 
+                    init_alpha=init_alpha,
+                    lambda_1=lambda_1)
+
+                best_result = genetic_algorithm.run_genetic_algorithm()
+                best_result = [np.full((MODEL_LAYER, MODEL_DIM//2), best_result[0]), best_result[1]]
+                
+                    
             # save result
             max_time_budget = int(loaded_parameters["evo_scale"] * loaded_parameters["max_time_budget"])
             
@@ -264,7 +280,7 @@ def main(args):
 if __name__ == "__main__":
     warnings.simplefilter("ignore")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", action="append", nargs="+")
+    # parser.add_argument("-m", "--model", action="append", nargs="+")
     parser.add_argument("-d", "--dataset", type=str, default="tau/scrolls")
     parser.add_argument("-s", "--subset", type=str, default="gov_report")
     parser.add_argument("-f", "--feature", type=str, default="input")
@@ -289,5 +305,5 @@ if __name__ == "__main__":
     # parser.add_argument("--search_twice", action="store_true")
     parser.add_argument("--truncate", action="store_true")
 
-    parser.add_argument("--sliding_window_attention", type=int)
+    # parser.add_argument("--sliding_window_attention", type=int)
     main(add_args(parser).parse_args())

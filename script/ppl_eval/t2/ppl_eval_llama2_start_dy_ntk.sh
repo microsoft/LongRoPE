@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 0 8192 0 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 0 8192 2 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 0 16384 0 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 0 16384 2
+# ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 0 8192 0 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 0 8192 2 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 0 16384 0 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 0 16384 2
 
-# ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 1 8192 4 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 1 8192 8 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 1 16384 4 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 1 16384 8
+# ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 1 8192 4 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 1 8192 8 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 1 16384 4 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 1 16384 8
 
-# ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 2 8192 16 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 2 8192 32 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 2 16384 16 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 2 16384 32
+# ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 2 8192 16 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 2 8192 32 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 2 16384 16 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 2 16384 32
 
-# ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 3 8192 64 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 3 8192 128 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 3 16384 64 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_pi.sh 3 16384 128
+# ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 3 8192 64 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 3 8192 128 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 3 16384 64 ; ./script/ppl_eval/t2/ppl_eval_llama2_start_dy_ntk.sh 3 16384 128
 
 # 检查是否传入了足够的参数  
 if [ $# -lt 3 ]; then  
@@ -47,7 +47,7 @@ save_memory=""
 max_tokens=$2
 start_token=$3
 
-method_list=(pi_start)
+method_list=(dy_ntk_start)
 echo "dataset PG19"
 for method in "${method_list[@]}"; do
     echo "####### $method, max-tokens=$max_tokens #############"

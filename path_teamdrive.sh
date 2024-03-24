@@ -1,6 +1,12 @@
 #!/bin/bash
 
-if uname -a | grep -q "GCRSANDBOX501"; then
+if uname -a | grep -q "GCRSANDBOX487"; then
+    path_team="/data/yiran/teamdrive/ExtendSeqLen"
+    #
+elif uname -a | grep -q "GCRSANDBOX488"; then
+    path_team="/data/yiran/teamdrive/ExtendSeqLen"
+    #
+elif uname -a | grep -q "GCRSANDBOX501"; then
     path_team="/data/lzhani/ExtendSeqLen/teamdrive/ExtendSeqLen"
     #
 elif uname -a | grep -q "GCRSANDBOX504"; then

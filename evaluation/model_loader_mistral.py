@@ -31,11 +31,7 @@ def load_model(model, args):
     
     print("aggressive_mem_causal_lm", args.aggressive_mem_causal_lm)
     if args.aggressive_mem_causal_lm:
-        if "Mistral" in args.model[0][0] or "mistral" in args.model[0][0]:
-        #    transformers.models.mistral.modeling_mistral.MistralAttention.forward = forward_flashattn_inference
-           transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
-        else:
-            raise ValueError("name not in mistral")
+        transformers.models.mistral.modeling_mistral.MistralForCausalLM.forward = forward_mistral_for_causal_lm
         
     print("aggressive-mem-decoder", args.aggressive_mem_decoder)
     if args.aggressive_mem_decoder:
@@ -107,7 +103,7 @@ def load_model(model, args):
                 para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
             
             # 128k la2 256k
-            if para_key == '128k_mis_256k':
+            if para_key in ['128k_mis_256k', '16k_mis_128k', '32k_mis_128k', '16k_mis_256k','32k_mis_256k',]:
                 para_key = 'ft_mis_256k'
                 
             rope_rescale = torch.load("./evaluation/rope_rescale-new.pt")

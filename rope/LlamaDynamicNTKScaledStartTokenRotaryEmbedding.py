@@ -2,16 +2,14 @@ import math
 import torch
 import numpy as np
 
-class LlamaLongRoPEScaledStartTokenRotaryEmbedding(torch.nn.Module):
+class LlamaDynamicNTKScaledStartTokenRotaryEmbedding(torch.nn.Module):
 
     def __init__(self, dim, 
                  max_position_embeddings=4096,
                  scale=1.0,
                  base=10000, device=None, 
-                 lambda_1=np.zeros((64,)), finetuned=False,
                  original_max_position_embeddings=4096,
                  mscale = 1.0,
-                 tmps="su",
                  start_token=0,
                  cos_sin_origin=None
                 ):
@@ -21,11 +19,9 @@ class LlamaLongRoPEScaledStartTokenRotaryEmbedding(torch.nn.Module):
         self.base = base
         
         self.scale = scale
-        self.lambda_1 = lambda_1
         self.mscale = mscale
         self.original_max_position_embeddings = original_max_position_embeddings
         
-        self.tmps = tmps
         self.start_token = start_token
         self.cos_sin_origin=cos_sin_origin
         
@@ -37,28 +33,15 @@ class LlamaLongRoPEScaledStartTokenRotaryEmbedding(torch.nn.Module):
             seq_len=max_position_embeddings, device=self.inv_freq.device, dtype=torch.get_default_dtype()
         )
         
-    def _get_mscale_su(self, scale=1):
-        if scale <= 1:
-            return 1.0
-        return math.sqrt( math.log(scale*self.original_max_position_embeddings)/math.log(self.original_max_position_embeddings) )
-    
     
     def _set_cos_sin_cache(self, seq_len, device, dtype):
         self.max_seq_len_cached = seq_len
-
-        dim = self.dim
-        base = self.base
-        scaling_factor = max(seq_len / (1.0*self.original_max_position_embeddings), 1.0)
-        
-        base_1 = torch.from_numpy(self.lambda_1).to(device) # [dim / 2]
-        assert base_1.shape[0] == dim // 2 , f"lambda_1 error : {base_1.shape[0]}"
-        
-        if self.tmps == "su":
-            self.mscale = float(self._get_mscale_su(scaling_factor))
-        else:
-            self.mscale = 1.0
+        if seq_len > self.original_max_position_embeddings:
+            self.base = self.base * (
+                (self.scale * seq_len / self.original_max_position_embeddings) - (self.scale - 1)
+            ) ** (self.dim / (self.dim - 2))
             
-        inv_freq = 1.0 / ( base_1 * ( self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)) )
+        inv_freq = 1.0 / ( self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)) 
         
         self.register_buffer("inv_freq", inv_freq)
 
@@ -75,6 +58,7 @@ class LlamaLongRoPEScaledStartTokenRotaryEmbedding(torch.nn.Module):
         # [1, 1, seq_len, dim]
         
         if self.start_token > 0:
+            print("start token in rope")
             assert self.cos_sin_origin != None
             emb_origin_cos, emb_origin_sin = self.cos_sin_origin
             emb_cos[:, :, 0:int(self.start_token), :] = emb_origin_cos[:, :, 0:int(self.start_token), :]

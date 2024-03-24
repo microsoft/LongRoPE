@@ -31,7 +31,7 @@ for ck_step in ck_steps:
                 elif job_name == "MMLU":  
                     values = [item["acc_norm"] for item in data['results'].values()]  
                     result = sum(values) / len(values)  
-                elif job_name == "arc":  
+                elif job_name == "ARC":  
                     result = data['results']['arc_challenge']['acc_norm']  
                 else:  
                     result = data['results'][job_name.lower()]['acc_norm']  

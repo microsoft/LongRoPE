@@ -40,7 +40,6 @@ import json
 # import tensor_parallel as tp
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 import cube
-import re
 
 try:
     import tiktoken
@@ -231,32 +230,6 @@ class LLMNeedleHaystackTester:
                         device_map="auto",
                         ).eval()
 
-                    # self.model_to_test = tp.tensor_parallel(self.model_to_test, sharded=True)
-
-            # compute_perplexity
-            # longlora-100k
- 
-            # "--tokenized ${/mnt/yiran/teamdrive3/ExtendSeqLen}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 10 --truncate"
-            # import datasets
-            # input_texts = datasets.load_from_disk("/mnt/yiran/teamdrive3/ExtendSeqLen/proofpile-test-tokenized")
-            
-            # input_texts = input_texts.filter(
-            #     lambda x: x["tokenized_len"] >= 131072)
-            
-            # input_texts = input_texts[ :10 ]
-            # tokenizer=AutoTokenizer.from_pretrained(self.model_name, use_fast = True )
-            # from evaluation.perplexity import compute_perplexity
-            # max_length = 8192
-            # print_single("self.model_to_test", self.model_to_test)
-            # ppl = compute_perplexity(
-            #     model=self.model_to_test, tokenizer=tokenizer, encodings=input_texts,
-            #     add_start_token=tokenizer.bos_token is not None, max_length=max_length,
-            #     sliding_window=256, truncate=True,
-            #     use_cache=False
-            #     )['mean_perplexity']
-            # print_single(f"$max_length {max_length} ppl {ppl}")
-            # exit(0)
-        
         else: 
             self.model_to_test = OpenAI(api_key=openai_api_key)
             if(self.model_provider == "OpenAI"):
@@ -276,6 +249,19 @@ class LLMNeedleHaystackTester:
         if x == 100:
             return 100
         return np.round(L / (1 + np.exp(-k * (x - x0))), 3)
+    
+    def tokenize_and_cache(text, model_name, cache_file='text.pt'):  
+        tokenizer = AutoTokenizer.from_pretrained(model_name)  
+        
+        if os.path.exists(cache_file):  
+            print('Loading tokenized text from cache...')  
+            input_ids = torch.load(cache_file)  
+        else:  
+            print('Tokenizing text...')  
+            input_ids = tokenizer.encode(text, return_tensors="pt")  
+            torch.save(input_ids, cache_file)  
+    
+        return input_ids  
     
     def bound_evaluate_and_log(self, *args):
         self.evaluate_and_log(*args)
@@ -434,16 +420,7 @@ class LLMNeedleHaystackTester:
         test_elapsed_time = test_end_time - test_start_time
         
         print_single(f"$$self.needle,\"{self.needle}\"\nresponse,\"{response}\"\n")
-         
-        if self.args_rope.needle_type=="origin":
-            find_numbers = re.findall(r'\d+', self.needle)  
-            response_numbers = re.findall(r'\d+', response) 
-            if find_numbers != [] and int(find_numbers[0]) == int(response_numbers[0]):
-                score = 10.0
-            else:
-                score = 0.0
-        else:    
-            score = scorer.score(self.needle, response)['rouge1'].fmeasure*10
+        score = scorer.score(self.needle, response)['rouge1'].fmeasure*10
         
         results = {
             # 'context' : context, # Uncomment this line if you'd like to save the context the model was asked to retrieve from. Warning: This will become very large.
@@ -556,11 +533,11 @@ class LLMNeedleHaystackTester:
         # Load up tiktoken so we navigate tokens more easily
 
         # Get your Paul Graham files loaded into a string
-        context = self.read_context_files()
+        # context = self.read_context_files()
 
-        # Truncate the Paul Graham essays to the context length you desire
-        context = self.encode_and_trim(context, context_length)
-
+        # # Truncate the Paul Graham essays to the context length you desire
+        # context = self.encode_and_trim(context, context_length)
+        
         # Insert your random statement according to your depth percent
         context = self.insert_needle(context, depth_percent, context_length)
 
@@ -718,7 +695,6 @@ if __name__ == "__main__":
     
     parser.add_argument("--max_tokens", type=int, default=8192)
     parser.add_argument("--prompt_template", type=str, default="base")
-    parser.add_argument("--needle_type", type=str, default="origin")
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )
     
@@ -744,39 +720,6 @@ if __name__ == "__main__":
         assert(args.model_name is not None)
         model_name = args.model_name
     
-    origin_needle = "\nThe special magic {city} number is: {rnd_number}\n"
-    origin_retrieval_question ="What is the special magic {city} number?"
-    
-    RANDOM_NEEDLE_CITIES  = [
-        'Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Chicago', 'Mexico City',
-        'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar',
-        'Dakar', 'Sofia', 'Kigali', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Almaty', 'Amman',
-        'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'Cairo', 'San Francisco',
-        'Lagos', 'Amsterdam', 'Paris', 'Rabat', 'Santiago', 'Copenhagen', 'Madrid', 'Kigali',
-        'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Ho Chi Minh City', 'Khartoum', 'Helsinki',
-        'Doha', 'Istanbul', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo',
-        'Johannesburg', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Barcelona', 'Chicago', 'Port Louis',
-        'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Khartoum', 'Jakarta',
-        'Madrid', 'Yerevan', 'Beirut', 'Athens', 'Chicago', 'Paris', 'Bucharest', 'Copenhagen', 'Brussels',
-        'Damascus', 'Seattle', 'Los Angeles', 'Yerevan', 'Victoria', 'Tunis', 'Astana', 'Seoul',
-        'Buenos Aires', 'Bangkok', 'Colombo', 'Brussels', 'Khartoum', 'Doha', 'San Francisco', 'Vienna', 'Jakarta']
-    import random
-    random.seed(42)
-    rand_city = random.choice(RANDOM_NEEDLE_CITIES)
-    rand_city = 'Thimphu'
-    
-    num_digits = 7
-    lower_bound = 10**(num_digits - 1)
-    upper_bound = 10**num_digits - 1
-    rnd_number = random.randint(lower_bound, upper_bound)
-    rnd_number = 4571243
-    
-    origin_needle = origin_needle.format(city=rand_city, rnd_number=rnd_number)
-    origin_retrieval_question = origin_retrieval_question.format(city=rand_city)
-    
-    needle ="\nThe best thing to do in San Francisco is eat a sandwich and sit in Dolores Park on a sunny day.\n"
-    retrieval_question="What is the best thing to do in San Francisco?"
-    
     cube.init()
     
     ht = LLMNeedleHaystackTester(model_name=model_name, 
@@ -793,10 +736,7 @@ if __name__ == "__main__":
                                  use_cache = args.use_cache,
                                  context_lengths_num_intervals = args.context_lengths_num_intervals,
                                  args_rope = args,
-                                 prompt_template=args.prompt_template,
-                                 needle=origin_needle if args.needle_type=="origin" else needle,
-                                 retrieval_question = origin_retrieval_question if args.needle_type=="origin" else retrieval_question,
-                                 
+                                 prompt_template=args.prompt_template
                                  )
     if not args.cube_trace:
         ht.start_test(args)

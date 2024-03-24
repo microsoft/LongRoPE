@@ -66,16 +66,16 @@ rm -rf ./evaluation/needle/result/$name
 #     --cube_trace
 
 echo "cube run ..."
-gpu_num=4
+gpu_num=8
 (
-CUDA_VISIBLE_DEVICES=4,5,6,7 /home/aisilicon/miniconda3/envs/cube4infer/bin/torchrun \
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /home/aisilicon/miniconda3/envs/cube4infer/bin/torchrun \
     --nproc_per_node=$gpu_num \
     --master_port 29510 \
     evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 256000 \
     --context_lengths_min 1024 \
     --context_lengths_max 256000 \
-    --context_lengths_num_intervals 10 \
+    --context_lengths_num_intervals 20 \
     --document_depth_percent_intervals 5 \
     --model_provider Mistral \
     --model_path ${mistral_128k} \

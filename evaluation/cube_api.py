@@ -35,67 +35,130 @@ def generate(args, model, infer_fn, config, tokenizer, prompt_ids, pass_key=None
         
     # load rope_para:
     # ft: 4k 8k 256k 512k 1024k 
-    if args.finetuned and args.method == "longrope":
-        if torch.distributed.get_rank() == 0:
-            print("args.finetuned", args.finetuned, "use rope_scale.pt")
-        if max_tokens != None:
-            seq_len = (max_tokens + 1023) // 1024
-            seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
-            for i in range(len(seq_range)-1):
-                if seq_range[i] <= seq_len <= seq_range[i+1]:   
-                    seq_len = seq_range[i+1]
-                    break
-            if config.model_type == "mistral": 
-                model_type = "mis"
-            else:
-                raise ValueError("model_type is not mistral")  
-            ft_model_len = (config.sliding_window + 1023) // 1024
+    if config.model_type == "mistral":
+        if args.finetuned and args.method == "longrope":
             if torch.distributed.get_rank() == 0:
-                print("config.sliding_window", config.sliding_window)
-            flag_twice = False
-            ft_model_key = None
-            
-            if seq_len == ft_model_len:
-                para_key = f"ft_{model_type}_{ft_model_len}k"
-            elif seq_len > ft_model_len:
-                para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
-                flag_twice = True
-                ft_model_key = f"ft_{model_type}_{ft_model_len}k"
+                print("args.finetuned", args.finetuned, "use rope_scale.pt")
+            if max_tokens != None:
+                seq_len = (max_tokens + 1023) // 1024
+                seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
+                for i in range(len(seq_range)-1):
+                    if seq_range[i] <= seq_len <= seq_range[i+1]:   
+                        seq_len = seq_range[i+1]
+                        break
+                if config.model_type == "mistral": 
+                    model_type = "mis"
+                else:
+                    raise ValueError("model_type is not mistral")  
+                ft_model_len = (config.sliding_window + 1023) // 1024
+                if torch.distributed.get_rank() == 0:
+                    print("config.sliding_window", config.sliding_window)
+                flag_twice = False
+                ft_model_key = None
+                
+                if seq_len == ft_model_len:
+                    para_key = f"ft_{model_type}_{ft_model_len}k"
+                elif seq_len > ft_model_len:
+                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                    flag_twice = True
+                    ft_model_key = f"ft_{model_type}_{ft_model_len}k"
+                else:
+                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                
+                # 128k la2 256k
+                if para_key == '128k_mis_256k':
+                    para_key = 'ft_mis_256k'
+                if para_key in ['16k_mis_128k', '32k_mis_128k', '16k_mis_256k', '32k_mis_256k']:
+                    para_key = 'ft_mis_128k'
+                rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
+                # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
+                if torch.distributed.get_rank() == 0:
+                    print("$$max_tokens", max_tokens, "para_key", para_key)
+                
+                lambda_1 = rope_rescale[para_key]
             else:
-                para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
-            
-            # 128k la2 256k
-            if para_key == '128k_mis_256k':
-                para_key = 'ft_mis_256k'
-            if para_key in ['16k_mis_128k', '32k_mis_128k', '16k_mis_256k', '32k_mis_256k']:
-                para_key = 'ft_mis_128k'
-            rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
-            # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
-            if torch.distributed.get_rank() == 0:
-                print("$$max_tokens", max_tokens, "para_key", para_key)
-            
-            lambda_1 = rope_rescale[para_key]
+                raise ValueError("max_tokens == None")  
+        elif args.method == "longrope" and not args.finetuned:
+            if args.longrope_para != None:
+                if torch.distributed.get_rank() == 0:
+                    print("Use input longrope para")
+                # load from .csv/.pt
+                if ".csv" in args.longrope_para:
+                    lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
+                elif ".pt" in args.longrope_para:
+                    lambda_1 = torch.load(args.longrope_para)
+                else:
+                    raise f"file type not support: {args.longrope_para}, must in [.pt, .csv]"
+            else:
+                if torch.distributed.get_rank() == 0:
+                    print("Use base scale (1.0)")
+                lambda_1 = np.full((32, 64), 1.0)
         else:
-            raise ValueError("max_tokens == None")  
-    elif args.method == "longrope" and not args.finetuned:
-        if args.longrope_para != None:
             if torch.distributed.get_rank() == 0:
-                print("Use input longrope para")
-            # load from .csv/.pt
-            if ".csv" in args.longrope_para:
-                lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
-            elif ".pt" in args.longrope_para:
-                lambda_1 = torch.load(args.longrope_para)
-            else:
-                raise f"file type not support: {args.longrope_para}, must in [.pt, .csv]"
-        else:
-            if torch.distributed.get_rank() == 0:
-                print("Use base scale (1.0)")
+                print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
             lambda_1 = np.full((32, 64), 1.0)
+            
     else:
-        if torch.distributed.get_rank() == 0:
-            print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
-        lambda_1 = np.full((32, 64), 1.0)
+        # ft: 4k 8k 256k 512k 1024k 
+        if args.finetuned and args.method == "longrope":
+            if torch.distributed.get_rank() == 0:
+                print("Use defaut longrope para: rope_scale-new.pt")
+            if args.max_tokens != None:
+                seq_len = (args.max_tokens + 1023) // 1024
+                seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
+                for i in range(len(seq_range)-1):
+                    if seq_range[i] <= seq_len <= seq_range[i+1]:   
+                        seq_len = seq_range[i+1]
+                        break
+                
+                if config.model_type == "llama":
+                    model_type = "la2"
+                else:
+                    raise ValueError("model_type is not llama")  
+                ft_model_len = (config.max_position_embeddings + 1023) // 1024
+
+                flag_twice = False
+                ft_model_key = None
+                
+                if seq_len == ft_model_len:
+                    para_key = f"ft_{model_type}_{ft_model_len}k"
+                elif seq_len > ft_model_len:
+                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                    flag_twice = True
+                    ft_model_key = f"ft_{model_type}_{ft_model_len}k"
+                else:
+                    para_key = f"{seq_len}k_{model_type}_{ft_model_len}k"
+                
+                # 128k la2 256k
+                if para_key == '128k_la2_256k':
+                    para_key = 'ft_la2_256k'
+                if torch.distributed.get_rank() == 0:
+                    print("args.max_tokens", args.max_tokens, "para_key", para_key)
+                rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
+                
+                lambda_1 = rope_rescale[para_key]
+            
+            else:
+                raise ValueError("args.max_tokens == None")  
+        
+        elif args.method == "longrope" and not args.finetuned:
+            if args.longrope_para != None:
+                if torch.distributed.get_rank() == 0:
+                    print("Use input longrope para")
+                # load from .csv/.pt
+                if ".csv" in args.longrope_para:
+                    lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
+                elif ".pt" in args.longrope_para:
+                    lambda_1 = torch.load(args.longrope_para)
+                else:
+                    raise f"file type not support: {args.longrope_para}"
+            else:
+                if torch.distributed.get_rank() == 0:
+                    print("Use base scale (1.0)")
+                lambda_1 = np.full((32, 64), 1.0)
+        else:
+            # use base scale
+            lambda_1 = np.full((32, 64), 1.0)
     
     scaling_factor = float(args.factor)
 
@@ -108,11 +171,11 @@ def generate(args, model, infer_fn, config, tokenizer, prompt_ids, pass_key=None
     if args.use_cache:
         if config.model_type == "mistral" or config.model_type == "Mistral":
             assert args.tp_size < 9, "tp_size should be no more than 8"
-            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                torch.zeros(1, (max_tokens + max_new_tokens + 2), (8 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
         else:
-            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+            past_key_values = [(torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                torch.zeros(1, (max_tokens + max_new_tokens + 2), (32 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
     else:
         past_key_values = None
     
@@ -260,11 +323,11 @@ def compile_model(loaded, args, config):
         if args.use_cache:
             if config.model_type == "mistral" or config.model_type == "Mistral":
                 assert args.tp_size < 9, "tp_size should be no more than 8"
-                past_key_values = [(torch.zeros(1, trace_size, (8 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                    torch.zeros(1, trace_size, (8 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+                past_key_values = [(torch.zeros(1, trace_size, (8 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                    torch.zeros(1, trace_size, (8 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
             else:
-                past_key_values = [(torch.zeros(1, trace_size, (32 // args.tp_size) , 128, dtype=torch.bfloat16, device=torch.device("cuda")), \
-                    torch.zeros(1, trace_size, (32 // args.tp_size), 128, dtype=torch.bfloat16, device=torch.device("cuda"))) for _ in range(32)]
+                past_key_values = [(torch.zeros(1, trace_size, (32 // args.tp_size) , 128, dtype=config.torch_dtype, device=torch.device("cuda")), \
+                    torch.zeros(1, trace_size, (32 // args.tp_size), 128, dtype=config.torch_dtype, device=torch.device("cuda"))) for _ in range(32)]
         else:
             past_key_values = None
         method = ["pi" for _ in range(32)]

@@ -372,8 +372,10 @@ def main(args):
         cube.init()
     models = [x[0] for x in args.model]
     # tokenizer = LlamaTokenizer.from_pretrained(
+    print("models", models)
     tokenizer = AutoTokenizer.from_pretrained(
-        models[0], model_max_length=sys.maxsize, trust_remote_code=True, use_fast = False)
+        models[0]
+        )
     
     tokenizer.pad_token = tokenizer.eos_token
 

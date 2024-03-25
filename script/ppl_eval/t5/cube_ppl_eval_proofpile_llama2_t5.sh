@@ -103,7 +103,7 @@ for config in "${config_list[@]}"; do
             --min_tokens $max_tokens \
             --tokens_step 2048 \
             --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
-            --original_max_position_embeddings 4096 \
+            --original_max_position_embeddings 4096 \       
             --flash_attn \
             ${save_memory} \
             --cache_dir $cache_dir \

@@ -73,13 +73,12 @@ def compute_perplexity_cube(
         
         for begin_loc in range(0, sequence_length, sliding_window):
             # skip last block
-            need_pad = (begin_loc + max_tokenized_len) > sequence_length
-            if need_pad:
-                continue
+            if args.max_tokens > 256 * 1024:
+                need_pad = (begin_loc + max_tokenized_len) > sequence_length
+                if need_pad:
+                    continue
             
             end_loc = min(begin_loc + max_tokenized_len, sequence_length)
-            if torch.distributed.get_rank() == 0:
-                print(begin_loc, end_loc)
             trg_len = end_loc - prev_end_loc
             input_ids = labels[:, begin_loc:end_loc].to(device)
             # print("input_ids", input_ids.shape)
@@ -323,9 +322,10 @@ def compute_perplexity(
         
         for begin_loc in range(0, seq_len, sliding_window):
             # skip last block
-            need_pad = (begin_loc + max_tokenized_len) > seq_len
-            if need_pad:
-                continue
+            if max_tokenized_len > 256 * 1024:
+                need_pad = (begin_loc + max_tokenized_len) > seq_len
+                if need_pad:
+                    continue
             
             end_loc = min(begin_loc + max_tokenized_len, seq_len)
             # print(begin_loc, end_loc)

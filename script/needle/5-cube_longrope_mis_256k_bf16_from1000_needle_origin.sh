@@ -20,7 +20,7 @@ echo "prompt_name: $prompt_name"
 
 # mistral_128k="${path_team}/ft_out_model/cube-mis-128k-bf16/ck-${ck_step}"
 mistral_256k="${path_team}/ft_out_model/cube-mis-256k-bf16/ck-${ck_step}"
-echo "cube-mis-256k-bf16 from 1000"
+echo "cube-mis-256k-bf16 from 1000 | needle origin"
 
 declare -A setting
 
@@ -32,7 +32,7 @@ setting["longrope_256k"]="-m ${mistral_256k} --method longrope --finetuned --fac
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph.pb dist_param_map.pt"
 
-name="2-cube_longrope_mis_256k_bf16_from_1000_ck_${ck_step}_debug_${prompt_name}_needle_new"
+name="2-cube_longrope_mis_256k_bf16_from_1000_ck_${ck_step}_debug_${prompt_name}_needle_origin"
 rm -rf ./evaluation/needle/result/$name
 
 echo "cube trace ..."
@@ -55,7 +55,7 @@ CUDA_VISIBLE_DEVICES=0 /home/aisilicon/miniconda3/envs/cube4infer/bin/torchrun \
     --flash_attn \
     --max_tokens 4000 \
     --prompt_template $prompt_name \
-    --needle_type "new" \
+    --needle_type "origin" \
     --use_cube \
     --rope_method s_pi \
     --rope_tmps su \
@@ -82,7 +82,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /home/aisilicon/miniconda3/envs/cube4infer/
     --flash_attn \
     --max_tokens 4000 \
     --prompt_template $prompt_name \
-    --needle_type "new" \
+    --needle_type "origin" \
     --use_cube \
     --rope_method s_pi \
     --rope_tmps su \

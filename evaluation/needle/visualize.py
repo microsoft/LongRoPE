@@ -67,8 +67,8 @@ def main(args):
 
     # Creating a DataFrame
     df = pd.DataFrame(data)
-    print(df)
-    print(df["Context Length"])
+    # print(df)
+    # print(df["Context Length"])
     locations = list(df["Context Length"].unique())
     locations.sort()
     for li, l in enumerate(locations):

@@ -36,11 +36,24 @@ setting["longrope_128k"]="--model ${path_dir}/ft_out_model/cube-128k-dim-piece-m
 setting["longrope_256k"]="--model ${path_dir}/ft_out_model/cube_256k_from_128k/ck-600/ --method longrope --finetuned --factor 64.0"
 
 
+setting["phi_128k"]="--model ${path_dir}/phi-25_v3_longrope_128k_redpajama_dpm_64_1000_bf16/ --method longrope --longrope_para ${path_dir}/phi-25_v3_longrope_128k_redpajama_dpm_64_1000_bf16/phi_25_v3_131072_dpm.csv --factor 32.0"
+
+# longrope Mistral 128k
+setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-128k/ck-400 --method longrope --finetuned --factor 32.0 --original_max_position_embeddings 4096"
+
+# longrope Mistral 256k
+setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original_max_position_embeddings 4096"
+
+
 # dataset setting
 # PROOFPILE_test="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 1 --truncate"
 
-PROOFPILE_128k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 10 --truncate"
-PROOFPILE_256k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 262144 --samples 10 --truncate"
+# PROOFPILE_128k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 10 --truncate"
+# PROOFPILE_256k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 262144 --samples 10 --truncate"
+
+BOOKS3_256K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized --dataset_min_tokens 2097152 --samples 20 --sliding_window 262144"
+
+BOOKS3_2048K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized --dataset_min_tokens 2097152 --samples 20 --sliding_window 1048576"
 
 cache_dir="../cache_dir"
 output_dir=./evaluation/result
@@ -56,21 +69,43 @@ config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "lo
 
 # config_list=("codellama") # check
 
-config_list=("longrope_128k")
-echo "dataset PROOFPILE 10sample"
+config_list=("phi_128k")
+# echo "dataset PROOFPILE 10sample"
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
-max_tokens_list=(4096)
+# max_tokens_list=(4096 131072)
+
+
+echo "dataset BOOKS3 20sample"
+# max_tokens_list=(8192 32768 65536 98304 131072 262144 524288 1048576)
+max_tokens_list=(4096 8192 32768 65536 98304 131072 262144) # check
+
+for max_tokens in "${max_tokens_list[@]}"; do
+    for config in "${config_list[@]}"; do
+        echo "####### $config, max-tokens=$max_tokens #############"
+        python evaluation/perplexity.py \
+            ${BOOKS3_256K}\
+            ${setting[$config]} \
+            --max_tokens $max_tokens \
+            --min_tokens $max_tokens \
+            --tokens_step 2048 \
+            --output_file "${output_dir}/t6_books3_${config}_${max_tokens}.csv" \
+            --flash_attn \
+            ${save_memory} \
+            --cache_dir $cache_dir
+    done
+done
+
 
 
 # gpu_num=1
 # for config in "${config_list[@]}"; do
 #     for max_tokens in "${max_tokens_list[@]}"; do
 #         echo "####### $config, max-tokens=$max_tokens #############"
-#         CUDA_VISIBLE_DEVICES=0,1,2,3 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
+#         CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
 #             --nproc_per_node=$gpu_num \
 #             --master_port 29520 \
 #             evaluation/perplexity.py \
-#             ${PROOFPILE_128k}\
+#             ${BOOKS3_256K}\
 #             ${setting[$config]} \
 #             --max_tokens $max_tokens \
 #             --min_tokens $max_tokens \
@@ -89,31 +124,31 @@ max_tokens_list=(4096)
 #     done
 # done
 
-gpu_num=4
-for config in "${config_list[@]}"; do
-    for max_tokens in "${max_tokens_list[@]}"; do
-        echo "####### $config, max-tokens=$max_tokens #############"
-        CUDA_VISIBLE_DEVICES=0,1,2,3 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
-            --nproc_per_node=$gpu_num \
-            --master_port 29520 \
-            evaluation/perplexity.py \
-            ${PROOFPILE_128k}\
-            ${setting[$config]} \
-            --max_tokens $max_tokens \
-            --min_tokens $max_tokens \
-            --tokens_step 2048 \
-            --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
-            --original_max_position_embeddings 4096 \
-            --flash_attn \
-            ${save_memory} \
-            --cache_dir $cache_dir \
-            --use_cube \
-            --rope_method s_pi \
-            --rope_tmps su \
-            --use_cache \
-            --tp_size $gpu_num
-    done
-done
+# gpu_num=8
+# for config in "${config_list[@]}"; do
+#     for max_tokens in "${max_tokens_list[@]}"; do
+#         echo "####### $config, max-tokens=$max_tokens #############"
+#         CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /mnt/yiran/miniconda3/envs/cube4infer/bin/torchrun \
+#             --nproc_per_node=$gpu_num \
+#             --master_port 29520 \
+#             evaluation/perplexity.py \
+#             ${BOOKS3_256K}\
+#             ${setting[$config]} \
+#             --max_tokens $max_tokens \
+#             --min_tokens $max_tokens \
+#             --tokens_step 2048 \
+#             --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
+#             --original_max_position_embeddings 4096 \
+#             --flash_attn \
+#             ${save_memory} \
+#             --cache_dir $cache_dir \
+#             --use_cube \
+#             --rope_method s_pi \
+#             --rope_tmps su \
+#             --use_cache \
+#             --tp_size $gpu_num
+#     done
+# done
 
 
 

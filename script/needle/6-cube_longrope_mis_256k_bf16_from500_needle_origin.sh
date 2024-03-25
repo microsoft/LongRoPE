@@ -34,7 +34,7 @@ setting["longrope_256k"]="-m ${mistral_256k} --method longrope --finetuned --fac
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph.pb dist_param_map.pt"
 
-name="3-cube_longrope_mis_256k_bf16_from_500_ck_${ck_step}_debug_${prompt_name}_needle_origin"
+name="6-cube_longrope_mis_256k_bf16_from_500_ck_${ck_step}_debug_${prompt_name}_needle_origin"
 rm -rf ./evaluation/needle/result/$name
 
 echo "cube trace ..."

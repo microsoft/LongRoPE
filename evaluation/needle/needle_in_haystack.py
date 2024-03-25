@@ -438,7 +438,7 @@ class LLMNeedleHaystackTester:
         if self.args_rope.needle_type=="origin":
             find_numbers = re.findall(r'\d+', self.needle)  
             response_numbers = re.findall(r'\d+', response) 
-            if find_numbers != [] and int(find_numbers[0]) == int(response_numbers[0]):
+            if find_numbers != [] and response_numbers != [] and int(find_numbers[0]) == int(response_numbers[0]):
                 score = 10.0
             else:
                 score = 0.0

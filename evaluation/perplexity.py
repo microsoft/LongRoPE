@@ -212,8 +212,9 @@ def compute_perplexity_cube(
                 else:
                     # print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
                     lambda_1 = np.full((32, 64), 1.0)
-        
-            # print("lambda_1 in model load ......", lambda_1)
+
+            if torch.distributed.get_rank() == 0:
+                print("lambda_1 in model load ......", lambda_1)
  
             scaling_factor = float(args.factor)
 

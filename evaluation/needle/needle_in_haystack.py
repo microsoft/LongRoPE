@@ -39,10 +39,7 @@ import glob
 import json
 # import tensor_parallel as tp
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
-try:
-    import cube
-except:
-    pass
+
 import re
 
 try:
@@ -929,8 +926,10 @@ if __name__ == "__main__":
     needle ="\nThe best thing to do in San Francisco is eat a sandwich and sit in Dolores Park on a sunny day.\n"
     retrieval_question="What is the best thing to do in San Francisco?"
     
-    cube.init()
-    
+    if args.use_cube:
+        import cube
+        cube.init()
+
     ht = LLMNeedleHaystackTester(model_name=model_name, 
                                  model_name_suffix=args.model_name_suffix,
                                  model_provider=args.model_provider,

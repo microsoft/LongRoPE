@@ -14,7 +14,7 @@ results_dict = {job_name: [] for job_name in job_names}
 for ck_step in ck_steps:  
     for job_name in job_names:  
         file_name = file_template.format(ck_step=ck_step, job_name=job_name)  
-        file_path = f'/mnt/yiran/LongRoPE/script/hf_benchmark/ft_out_model/cube-mis-128k-bf16/{file_name}'  
+        file_path = f'script/hf_benchmark/ft_out_model/cube-mis-128k-bf16/{file_name}'  
           
         # 初始设置为NaN，以防文件不存在或无法读取数据  
         result = pd.NA  

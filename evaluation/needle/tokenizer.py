@@ -11,12 +11,13 @@ tokenizer = AutoTokenizer.from_pretrained(model_fp16, use_fast = True )
 
 data_path = "/mnt/yiran/LongRoPE/evaluation/needle/PaulGrahamEssays/"
 # input_text = "today is sunny day."
-# cnt = 0
+cnt = 0
+cnt_nums = 0
 for file in glob.glob(f"{data_path}*.txt"):
-    # if cnt > 1:
-    #     break
-    # else:
-    #     cnt += 1
+    if cnt > 1:
+        break
+    else:
+        cnt += 1
     with open(file, 'r') as f:
         file_text = f.read()
         file_name = file.split('/')[-1].split('.')[-2]
@@ -24,8 +25,19 @@ for file in glob.glob(f"{data_path}*.txt"):
         print(f"read {file_name}, \n  str len {len(file_text)}")
         input_ids = tokenizer.encode(file_text, return_tensors="pt")
         print(f"input_ids.shape {input_ids.shape}")
-        torch.save(input_ids.cpu(), f'{data_path}{file_name}.pt')
-       
+        print(input_ids.dtype)
+        cnt += input_ids.shape[1]
+        cnt_nums += 1
+        # torch.save(input_ids.cpu(), f'{data_path}{file_name}.pt')
+        # 164109 
+print("cnt", cnt)
+print("cnt_nums", cnt_nums)
+
+#
+# cnt 164109 tokens * 12 => 2M 
+# cnt_nums 49
+
+
 # reload_f = torch.load("/mnt/yiran/LongRoPE/evaluation/needle/PaulGrahamEssays/submarine.pt") 
 # print(reload_f.shape)
 # print(reload_f[0][-5:])

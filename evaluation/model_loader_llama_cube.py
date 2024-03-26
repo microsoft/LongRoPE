@@ -123,7 +123,7 @@ def load_model_ppl(model, config, args):
         each.self_attn.rotary_emb = CubeLlamaDynamicScaledRotaryEmbedding(
             dim=each.self_attn.head_dim, 
             scale=scaling_factor,
-            max_position_embeddings=args.max_position_embeddings,
+            # max_position_embeddings=args.max_position_embeddings,
             original_max_position_embeddings=args.original_max_position_embeddings, 
         ) 
                 

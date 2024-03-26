@@ -28,7 +28,8 @@ def load_model(model, config, args):
     
     from evaluation.model_executor.utils import _set_default_torch_dtype
     torch_dtype = config.torch_dtype
-    # torch_dtype = torch.float16
+    
+    # torch_dtype = torch.bfloat16
     print("apply_dtype", torch_dtype)
     with _set_default_torch_dtype(torch_dtype):
         if args.cpu:
@@ -58,6 +59,7 @@ def load_model(model, config, args):
     #     lambda_1 = lambda_1 * lambda_twice
     # assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
 
+    
     for each in model.model.layers:
         each.self_attn.rotary_emb = CubeLlamaDynamicScaledRotaryEmbedding(
             dim=each.self_attn.head_dim, 
@@ -118,13 +120,16 @@ def load_model_ppl(model, config, args):
     
     #     lambda_1 = lambda_1 * lambda_twice
     # assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
-
+    print("$torch_dtype", torch_dtype)
+    # exit(0)
+    
     for each in model.model.layers:
         each.self_attn.rotary_emb = CubeLlamaDynamicScaledRotaryEmbedding(
             dim=each.self_attn.head_dim, 
             scale=scaling_factor,
             max_position_embeddings=args.max_position_embeddings,
             original_max_position_embeddings=args.original_max_position_embeddings, 
+            dtype=torch_dtype,
         ) 
                 
     return model

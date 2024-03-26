@@ -6,7 +6,10 @@ import torch
 import warnings
 from transformers import AutoTokenizer, LlamaTokenizer
 
-import cube 
+try:    
+    import cube 
+except:
+    pass
 
 from tqdm import tqdm
 
@@ -64,18 +67,18 @@ def compute_perplexity_cube(
     for encoding_index in range(0, len(encoded_texts)):
         
         labels = torch.tensor(encoded_texts[encoding_index:encoding_index+1])
-        # print("len", labels.shape)
-        seq_len = labels.size(1)
+        sequence_length = labels.size(1)
 
         prev_end_loc = 0
         
-        for begin_loc in range(0, seq_len, sliding_window):
+        for begin_loc in range(0, sequence_length, sliding_window):
             # skip last block
-            need_pad = (begin_loc + max_tokenized_len) > seq_len
-            if need_pad:
-                continue
+            if args.max_tokens > 256 * 1024:
+                need_pad = (begin_loc + max_tokenized_len) > sequence_length
+                if need_pad:
+                    continue
             
-            end_loc = min(begin_loc + max_tokenized_len, seq_len)
+            end_loc = min(begin_loc + max_tokenized_len, sequence_length)
             trg_len = end_loc - prev_end_loc
             input_ids = labels[:, begin_loc:end_loc].to(device)
             # print("input_ids", input_ids.shape)
@@ -95,7 +98,7 @@ def compute_perplexity_cube(
             # ft: 4k 8k 256k 512k 1024k 
             if config.model_type == "llama":
                 if args.finetuned and args.method == "longrope":
-                    print("Use defaut longrope para: rope_scale-new.pt")
+                    # print("Use defaut longrope para: rope_scale-new.pt")
                     if args.max_tokens != None:
                         seq_len = (args.max_tokens + 1023) // 1024
                         seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
@@ -136,7 +139,7 @@ def compute_perplexity_cube(
                 
                 elif args.method == "longrope" and not args.finetuned:
                     if args.longrope_para != None:
-                        print("Use input longrope para")
+                        # print("Use input longrope para")
                         # load from .csv/.pt
                         if ".csv" in args.longrope_para:
                             lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
@@ -145,7 +148,7 @@ def compute_perplexity_cube(
                         else:
                             raise f"file type not support: {args.longrope_para}"
                     else:
-                        print("Use base scale (1.0)")
+                        # print("Use base scale (1.0)")
                         lambda_1 = np.full((32, 64), 1.0)
                 else:
                     # use base scale
@@ -154,7 +157,7 @@ def compute_perplexity_cube(
                 # load rope_para:
                 # ft: 4k 8k 256k 512k 1024k 
                 if args.finetuned and args.method == "longrope":
-                    print("args.finetuned", args.finetuned, "use rope_scale.pt")
+                    # print("args.finetuned", args.finetuned, "use rope_scale.pt")
                     if args.max_tokens != None:
                         seq_len = (args.max_tokens + 1023) // 1024
                         seq_range = [0, 4, 8, 16, 32, 128, 256, 512, 1024, 2048, 10000]
@@ -167,7 +170,7 @@ def compute_perplexity_cube(
                         else:
                             raise ValueError("model_type is not mistral")  
                         ft_model_len = (config.sliding_window + 1023) // 1024
-                        print("config.sliding_window", config.sliding_window)
+                        # print("config.sliding_window", config.sliding_window)
                         flag_twice = False
                         ft_model_key = None
                         
@@ -195,7 +198,7 @@ def compute_perplexity_cube(
                         raise ValueError("args.max_tokens == None")  
                 elif args.method == "longrope" and not args.finetuned:
                     if args.longrope_para != None:
-                        print("Use input longrope para")
+                        # print("Use input longrope para")
                         # load from .csv/.pt
                         if ".csv" in args.longrope_para:
                             lambda_1 = np.loadtxt(open(args.longrope_para, "rb"), delimiter=",", skiprows=0)
@@ -204,13 +207,14 @@ def compute_perplexity_cube(
                         else:
                             raise f"file type not support: {args.longrope_para}, must in [.pt, .csv]"
                     else:
-                        print("Use base scale (1.0)")
+                        # print("Use base scale (1.0)")
                         lambda_1 = np.full((32, 64), 1.0)
                 else:
-                    print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
+                    # print("args.finetuned", args.finetuned, "Not use rope_scale.pt")
                     lambda_1 = np.full((32, 64), 1.0)
-        
-            print("lambda_1 in model load ......", lambda_1)
+
+            if torch.distributed.get_rank() == 0:
+                print("lambda_1 in model load ......", lambda_1)
  
             scaling_factor = float(args.factor)
 
@@ -244,7 +248,9 @@ def compute_perplexity_cube(
                             )
                 
                 neg_log_likelihood = outputs['loss']
-
+            
+            if torch.distributed.get_rank() == 0:
+                print(outputs)
             # if aggressive_memory:
             outputs = None
             input_ids = None
@@ -259,7 +265,7 @@ def compute_perplexity_cube(
             pbar.set_postfix(ppl=ppl)
 
             prev_end_loc = end_loc
-            if end_loc == seq_len:
+            if end_loc == sequence_length:
                 break
 
         pbar.update(1)
@@ -317,11 +323,13 @@ def compute_perplexity(
         
         for begin_loc in range(0, seq_len, sliding_window):
             # skip last block
-            need_pad = (begin_loc + max_tokenized_len) > seq_len
-            if need_pad:
-                continue
+            if max_tokenized_len > 256 * 1024:
+                need_pad = (begin_loc + max_tokenized_len) > seq_len
+                if need_pad:
+                    continue
             
             end_loc = min(begin_loc + max_tokenized_len, seq_len)
+            # print(begin_loc, end_loc)
             trg_len = end_loc - prev_end_loc
             input_ids = labels[:, begin_loc:end_loc].to(device)
             # print("input_ids", input_ids.shape)
@@ -341,8 +349,8 @@ def compute_perplexity(
                                 use_cache=use_cache
                                 )
                 neg_log_likelihood = outputs.loss
-            
-            print(outputs)
+
+            # print(outputs)
 
             # if aggressive_memory:
             outputs = None
@@ -411,17 +419,38 @@ def main(args):
             print(f"Saved tokenized dataset to {args.save_tokenized}")
             return
 
-    if args.dataset_min_tokens:
-        # args.dataset_min_tokens = args.min_tokens
-        input_texts = input_texts.filter(
-                lambda x: x["tokenized_len"] >= args.dataset_min_tokens)
-    if args.samples:
-        input_texts = input_texts[:min(args.samples, len(input_texts))]
-        # input_texts.save_to_disk("./evaluation/dataset/books3/")
-        if min(args.samples, len(input_texts))==0:
-            raise ValueError("Seq too long! No sample")
+    if "books" in args.tokenized:
+        config = transformers.AutoConfig.from_pretrained(models[0], cache_dir=args.cache_dir)
+        save_path = f"books_type_{config.model_type}_min{args.dataset_min_tokens}.pt"
+        if os.path.exists(save_path):
+            input_texts = torch.load(save_path)
         else:
-            print("samples: ", args.samples, len(input_texts))
+            if args.dataset_min_tokens:
+                # args.dataset_min_tokens = args.min_tokens
+                input_texts = input_texts.filter(
+                    lambda x: x["tokenized_len"] >= args.dataset_min_tokens)
+            if args.samples:
+                input_texts = input_texts[:min(args.samples, len(input_texts))]
+                # input_texts.save_to_disk("./evaluation/dataset/books3/")
+                if min(args.samples, len(input_texts))==0:
+                    raise ValueError("Seq too long! No sample")
+                else:
+                    print("samples: ", args.samples, len(input_texts))
+            torch.save(input_texts, save_path)
+    else:   
+        if args.dataset_min_tokens:
+            # args.dataset_min_tokens = args.min_tokens
+            input_texts = input_texts.filter(
+                    lambda x: x["tokenized_len"] >= args.dataset_min_tokens)
+        if args.samples:
+            input_texts = input_texts[:min(args.samples, len(input_texts))]
+            # input_texts.save_to_disk("./evaluation/dataset/books3/")
+            if min(args.samples, len(input_texts))==0:
+                raise ValueError("Seq too long! No sample")
+            else:
+                print("samples: ", args.samples, len(input_texts))
+    
+
     if args.tokens_step:
         tokens = [x for x in range(
             args.min_tokens, args.max_tokens + 1, args.tokens_step)]

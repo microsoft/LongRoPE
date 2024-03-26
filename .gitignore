@@ -425,3 +425,7 @@ gencode*.py
 evaluation/log-new-2.txt
 contexts-1/
 cube_graph.pb
+books_min2097152.pt
+books_type_llama_min2097152.pt
+books_type_mistral_min2097152.pt
+script/ppl_eval/t6/result/

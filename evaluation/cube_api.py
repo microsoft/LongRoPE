@@ -343,7 +343,7 @@ def compile_model(loaded, args, config):
             input_ids = input_ids[:, :trace_size]
             length = [input_ids.shape[1]]
         if args.sliding_window_attention is None:
-            rep_sliding_window_attention = [length for _ in range(32)]
+            rep_sliding_window_attention = [length[0] for _ in range(32)]
         else:
             rep_sliding_window_attention = [args.sliding_window_attention for _ in range(32)]
         

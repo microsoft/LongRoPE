@@ -431,8 +431,8 @@ class LLMNeedleHaystackTester:
         # print_single("$rm bos")
         # prompt = prompt.replace("<s>", "")
         # print_single(prompt_ids)
-        print_single(self.enc.decode(prompt_ids.squeeze().tolist()))
-        exit(0)
+        # print_single(self.enc.decode(prompt_ids.squeeze().tolist()))
+        # exit(0)
         
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):

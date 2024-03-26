@@ -5,14 +5,14 @@ path_dir=$path_team
 export TOKENIZERS_PARALLELISM=false
 
 # 检查是否传入了足够的参数  
-if [ $# -lt 2 ]; then  
-    echo "Error: Insufficient arguments provided."  
-    echo "Usage: $0 <ck_step> <prompt_name>"  
-    exit 1  
-fi  
+# if [ $# -lt 2 ]; then  
+#     echo "Error: Insufficient arguments provided."  
+#     echo "Usage: $0 <ck_step> <prompt_name>"  
+#     exit 1  
+# fi  
 
-ck_step=$1
-prompt_name=$2
+ck_step=1_500
+prompt_name=ANTHROPIC_TEMPLATE_ORIGINAL
 echo "ck_step: $ck_step"
 echo "prompt_name: $prompt_name"
 # ANTHROPIC_TEMPLATE_REV1
@@ -36,9 +36,9 @@ setting["longrope_256k"]="-m ${mistral_256k} --method longrope --finetuned --fac
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
 # # clean pt
-pt_list="fullmodel.pt.* gencode* cube_graph.pb dist_param_map.pt"
+pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
 
-name="7-cube_longrope_mis_256k_sft_ck_${ck_step}_debug_${prompt_name}_needle_origin"
+name="8-cube_longrope_mis_256k_sft_ck_${ck_step}_debug_${prompt_name}_needle_origin"
 rm -rf ./evaluation/needle/result/$name
 
 echo "cube trace ..."
@@ -101,4 +101,4 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /home/aisilicon/miniconda3/envs/cube4infer/
 
 # python evaluation/needle/visualize.py 
 
-python evaluation/needle/visualize.py --name 7-2m-bf16-256k --path evaluation/needle/result/$name/ck-$ck_step/
+python evaluation/needle/visualize.py --name 8-2m-bf16-256k --path evaluation/needle/result/$name/ck-$ck_step/

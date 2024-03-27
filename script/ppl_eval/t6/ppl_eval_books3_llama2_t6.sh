@@ -42,11 +42,11 @@ save_memory="\
 # save_memory="" # check
 
 config_list=("longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
-# config_list=("longlora") # check
+config_list=("longrope_128k") # check
 
 echo "dataset BOOKS3 20sample"
 max_tokens_list=(8192 32768 65536 98304 131072 262144 524288 1048576)
-max_tokens_list=(8192 32768 65536 98304 131072 262144) # check
+max_tokens_list=(8192) # check
 
 for max_tokens in "${max_tokens_list[@]}"; do
     for config in "${config_list[@]}"; do

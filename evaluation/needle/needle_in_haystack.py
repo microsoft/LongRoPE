@@ -380,7 +380,50 @@ class LLMNeedleHaystackTester:
     #         test_format = ANTHROPIC_TEMPLATE_REV1_ED.format(question=self.retrieval_question, context=context)
     #         return test_format
     
-    def generate_prompt(self, template_list, context_ids):  
+    def split_template(self, template):  
+        parts = template.split("{question}")  
+        for i in range(1, len(parts)):  
+            parts.insert(i*2-1, "question")  
+        
+        for i, part in enumerate(parts):  
+            if "{context}" in part:  
+                subparts = part.split("{context}")  
+                for j in range(1, len(subparts)):  
+                    subparts.insert(j*2-1, "context")  
+                parts[i:i+1] = subparts  
+        return parts  
+  
+    def generate_prompt(self, context_ids):
+        
+        if self.prompt_template == "SIMPLE_TEMPLATE":
+            from prompt import SIMPLE_TEMPLATE
+            template_list = self.split_template(SIMPLE_TEMPLATE)
+
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1":
+            from prompt import ANTHROPIC_TEMPLATE_REV1
+            template_list = self.split_template(ANTHROPIC_TEMPLATE_REV1)
+
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV2":
+            from prompt import ANTHROPIC_TEMPLATE_REV2
+            template_list = self.split_template(ANTHROPIC_TEMPLATE_REV2)
+
+        elif self.prompt_template == "ANTHROPIC_TEMPLATE_ORIGINAL":
+            from prompt import ANTHROPIC_TEMPLATE_ORIGINAL
+            template_list = self.split_template(ANTHROPIC_TEMPLATE_ORIGINAL)
+
+        elif self.prompt_template == "GEMINI_TEMPLATE":
+            from prompt import GEMINI_TEMPLATE
+            template_list = self.split_template(GEMINI_TEMPLATE)
+
+        elif self.prompt_template == "GEMINI_TEMPLATE2":
+            from prompt import GEMINI_TEMPLATE2
+            template_list = self.split_template(GEMINI_TEMPLATE2)
+
+        else:
+            raise ("prompt_template not support")
+
+        
+        # template_list = 
         question_ids = self.enc.encode(self.retrieval_question, return_tensors="pt", add_special_tokens=False)
         # 初始化一个空的张量列表，用于存储所有编码后的部分  
         encoded_parts = []  
@@ -421,9 +464,13 @@ class LLMNeedleHaystackTester:
         print_single("begin generate_prompt")
         
         # Prepare your message to send to the model you're going to evaluate
-        from prompt import ANTHROPIC_TEMPLATE_ORIGINAL_LIST
-        template_list = ANTHROPIC_TEMPLATE_ORIGINAL_LIST
-        prompt_ids = self.generate_prompt(template_list, context_ids)
+        
+        
+        # from prompt import ANTHROPIC_TEMPLATE_ORIGINAL_LIST
+        # template_list = ANTHROPIC_TEMPLATE_ORIGINAL_LIST
+        
+        # template_list
+        prompt_ids = self.generate_prompt(context_ids)
         
         # print_single("$rm bos")
         # prompt = prompt.replace("<s>", "")
@@ -866,7 +913,7 @@ if __name__ == "__main__":
     parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
     
     parser.add_argument("--max_tokens", type=int, default=8192)
-    parser.add_argument("--prompt_template", type=str, default="base")
+    parser.add_argument("--prompt_template", type=str, default="ANTHROPIC_TEMPLATE_ORIGINAL")
     parser.add_argument("--needle_type", type=str, default="origin")
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )

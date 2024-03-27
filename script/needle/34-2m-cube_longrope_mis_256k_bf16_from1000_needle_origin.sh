@@ -19,7 +19,10 @@ echo "prompt_name: $prompt_name"
 
 
 # mistral_128k="${path_team}/ft_out_model/cube-mis-128k-bf16/ck-${ck_step}"
-mistral_256k="${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-${ck_step}"
+# mistral_256k="${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-${ck_step}"
+
+# from 1000
+mistral_256k="${path_team}/ft_out_model/cube-mis-256k-bf16/ck-${ck_step}"
 
 # mistral_256k="${path_team}/ft_out_model/longrope-256k-sft-mis/mis-256k-longalphaca-12k/ck-${ck_step}"
 
@@ -33,28 +36,30 @@ setting["longrope_256k"]="-m ${mistral_256k} --method longrope --finetuned --fac
 
 
 # 1k, 2k, 4k, 8k, 16k, 32k, 64k, 128k, 200k, 400k, 500k, 800k, 1000k, 1500k, 1800k,  2m
-# 1000,2000,4000,8000,16000,64000,128000,200000,400000,500000,800000,10000000,1500000,1800000,2000000
+
+list_2m="450000,500000,550000,600000,650000,700000,750000,850000,900000,950000,10000000"
 
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
+python_path=$(which python)
+torch_path=$(dirname $python_path)
 
-name="8-cube_longrope_mis_256k_sft_ck_${ck_step}_debug_${prompt_name}_needle_origin"
+
+name="33-1m-cube_longrope_mis_256k_bf16_from1000_ck_${ck_step}_needle_origin"
 rm -rf ./evaluation/needle/result/$name
 
 echo "cube trace ..."
 gpu_num=1
 
 rm $pt_list
-CUDA_VISIBLE_DEVICES=0 /home/aisilicon/miniconda3/envs/cube4infer/bin/torchrun \
+CUDA_VISIBLE_DEVICES=0 $torch_path/torchrun \
     --nproc_per_node=$gpu_num \
     --master_port 29510 \
     evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 256000 \
-    --context_lengths_min 1024 \
-    --context_lengths_max 256000 \
-    --context_lengths_num_intervals 20 \
     --document_depth_percent_intervals 5 \
+    --seq_series $list_2m \
     --model_provider Mistral \
     --model_path ${mistral_256k} \
     --result_path ./evaluation/needle/result/$name/ \
@@ -74,14 +79,14 @@ CUDA_VISIBLE_DEVICES=0 /home/aisilicon/miniconda3/envs/cube4infer/bin/torchrun \
 echo "cube run ..."
 gpu_num=8
 (
-CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /home/aisilicon/miniconda3/envs/cube4infer/bin/torchrun \
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
     --nproc_per_node=$gpu_num \
     --master_port 29510 \
     evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 2000000 \
     --context_lengths_min 1000 \
     --context_lengths_max 2000000 \
-    --seq_series "1000,2000,4000,8000,16000,64000,128000,200000,400000,500000,800000" \
+    --seq_series $list_2m \
     --context_lengths_num_intervals 10 \
     --document_depth_percent_intervals 5 \
     --model_provider Mistral \
@@ -102,4 +107,4 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 /home/aisilicon/miniconda3/envs/cube4infer/
 
 # python evaluation/needle/visualize.py 
 
-python evaluation/needle/visualize.py --name 8-2m-bf16-256k-origin --path evaluation/needle/result/$name/ck-$ck_step/
+python evaluation/needle/visualize.py --name 34-1m-bf16-256k-from1000-origin --path evaluation/needle/result/$name/ck-$ck_step/

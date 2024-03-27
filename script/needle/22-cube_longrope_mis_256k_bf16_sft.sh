@@ -143,4 +143,4 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 ${torch_path}/torchrun \
 
 # python evaluation/needle/visualize.py 
 
-python evaluation/needle/visualize.py --name ${nums}-${model_sft}-origin --path evaluation/needle/result/$name/ck-$ck_step/
+python evaluation/needle/visualize.py --name ${nums}-${model_sft}-origin --path evaluation/needle/result/$name/

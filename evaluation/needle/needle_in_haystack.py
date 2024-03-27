@@ -666,34 +666,6 @@ class LLMNeedleHaystackTester:
         # Convert back to a string and return it
         # new_context = self.decode_tokens(tokens_new_context)
         return tokens_new_context
-    
-    # def get_context_length_in_tokens(self, context):
-    #     if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
-    #         return len(self.enc.encode(context))
-    #     elif self.model_provider == "Anthropic":
-    #         # Assuming you have a different encoder for Anthropic
-    #         encoded = self.enc.encode(context)
-    #         return len(self.enc.encode(context).ids)
-    #     else:
-            
-    #         raise ValueError("model_provider must be either 'OpenAI' or 'Anthropic'")
-
-    # def read_context_files_old(self):
-    #     context = ""
-    #     max_context_length = max(self.context_lengths)
-        
-    #     try_read_context_files = 0
-    #     while self.get_context_length_in_tokens(context) < max_context_length:
-    #         try_read_context_files += 1
-    #         print_single("try_read_context_files", try_read_context_files)
-    #         print_single("curr len:", self.get_context_length_in_tokens(context))
-            
-    #         from prompt import file_list
-    #         # for file in glob.glob(f"{self.haystack_dir}/*.txt"):
-    #         for file in file_list:
-    #             with open(file, 'r') as f:
-    #                 context += f.read()
-    #     return context
 
     def read_context_files(self):  
         from prompt import file_list_pt  

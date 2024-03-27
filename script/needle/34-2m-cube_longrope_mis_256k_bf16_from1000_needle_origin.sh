@@ -84,8 +84,6 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
     --master_port 29510 \
     evaluation/needle/needle_in_haystack.py \
     --s_len 0 --e_len 2000000 \
-    --context_lengths_min 1000 \
-    --context_lengths_max 2000000 \
     --seq_series $list_2m \
     --context_lengths_num_intervals 10 \
     --document_depth_percent_intervals 5 \
@@ -97,6 +95,8 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
     --max_tokens 4000 \
     --prompt_template $prompt_name \
     --needle_type "origin" \
+    --random_num 6072345 \
+    --city_idx 15 \
     --use_cube \
     --rope_method s_pi \
     --rope_tmps su \

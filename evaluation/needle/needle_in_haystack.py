@@ -755,6 +755,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_tokens", type=int, default=8192)
     parser.add_argument("--prompt_template", type=str, default="ANTHROPIC_TEMPLATE_ORIGINAL")
     parser.add_argument("--needle_type", type=str, default="origin")
+    parser.add_argument("--city_idx", type=int, default=25)
+    parser.add_argument("--random_num", type=int, default=4571243)
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )
     
@@ -783,29 +785,32 @@ if __name__ == "__main__":
     origin_needle = "\nThe special magic {city} number is: {rnd_number}\n"
     origin_retrieval_question ="What is the special magic {city} number?"
     
-    RANDOM_NEEDLE_CITIES  = [
-        'Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Chicago', 'Mexico City',
-        'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar',
-        'Dakar', 'Sofia', 'Kigali', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Almaty', 'Amman',
-        'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'Cairo', 'San Francisco',
-        'Lagos', 'Amsterdam', 'Paris', 'Rabat', 'Santiago', 'Copenhagen', 'Madrid', 'Kigali',
-        'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Ho Chi Minh City', 'Khartoum', 'Helsinki',
-        'Doha', 'Istanbul', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo',
-        'Johannesburg', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Barcelona', 'Chicago', 'Port Louis',
-        'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Khartoum', 'Jakarta',
-        'Madrid', 'Yerevan', 'Beirut', 'Athens', 'Chicago', 'Paris', 'Bucharest', 'Copenhagen', 'Brussels',
-        'Damascus', 'Seattle', 'Los Angeles', 'Yerevan', 'Victoria', 'Tunis', 'Astana', 'Seoul',
-        'Buenos Aires', 'Bangkok', 'Colombo', 'Brussels', 'Khartoum', 'Doha', 'San Francisco', 'Vienna', 'Jakarta']
+    # RANDOM_NEEDLE_CITIES  = [
+    #     'Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Chicago', 'Mexico City',
+    #     'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar',
+    #     'Dakar', 'Sofia', 'Kigali', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Almaty', 'Amman',
+    #     'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'Cairo', 'San Francisco',
+    #     'Lagos', 'Amsterdam', 'Paris', 'Rabat', 'Santiago', 'Copenhagen', 'Madrid', 'Kigali',
+    #     'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Ho Chi Minh City', 'Khartoum', 'Helsinki',
+    #     'Doha', 'Istanbul', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo',
+    #     'Johannesburg', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Barcelona', 'Chicago', 'Port Louis',
+    #     'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Khartoum', 'Jakarta',
+    #     'Madrid', 'Yerevan', 'Beirut', 'Athens', 'Chicago', 'Paris', 'Bucharest', 'Copenhagen', 'Brussels',
+    #     'Damascus', 'Seattle', 'Los Angeles', 'Yerevan', 'Victoria', 'Tunis', 'Astana', 'Seoul',
+    #     'Buenos Aires', 'Bangkok', 'Colombo', 'Brussels', 'Khartoum', 'Doha', 'San Francisco', 'Vienna', 'Jakarta']
+    unique_cities_ordered = ['Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Mexico City', 'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar', 'Sofia', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Amman', 'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'San Francisco', 'Paris', 'Rabat', 'Copenhagen', 'Madrid', 'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Khartoum', 'Helsinki', 'Doha', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Port Louis', 'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Jakarta', 'Yerevan', 'Beirut', 'Athens', 'Bucharest', 'Brussels', 'Tunis', 'Astana', 'Seoul', 'Buenos Aires', 'Vienna']
+    
     import random
     random.seed(42)
-    rand_city = random.choice(RANDOM_NEEDLE_CITIES)
-    rand_city = 'Thimphu'
+    rand_city = random.choice(unique_cities_ordered)
+    # rand_city = 'Thimphu'
+    rand_city = unique_cities_ordered[args.city_idx]
     
     num_digits = 7
     lower_bound = 10**(num_digits - 1)
     upper_bound = 10**num_digits - 1
     rnd_number = random.randint(lower_bound, upper_bound)
-    rnd_number = 4571243
+    rnd_number = args.random_num
     
     origin_needle = origin_needle.format(city=rand_city, rnd_number=rnd_number)
     origin_retrieval_question = origin_retrieval_question.format(city=rand_city)

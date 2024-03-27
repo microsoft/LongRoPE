@@ -14,6 +14,7 @@ fi
 model_sft=$1
 # ck_step=$2
 prompt_name=ANTHROPIC_TEMPLATE_ORIGINAL
+
 echo "ck_step: $ck_step"
 echo "prompt_name: $prompt_name"
 # ANTHROPIC_TEMPLATE_REV1
@@ -74,7 +75,7 @@ pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
 python_path=$(which python)
 torch_path=$(dirname $python_path)
 
-nums=22
+nums=27
 name="${nums}-cube_longrope_${model_sft}_needle_origin"
 rm -rf ./evaluation/needle/result/$name
 
@@ -83,47 +84,18 @@ rm -rf ./evaluation/needle/result/$name
 # exit 0
 
 
-# echo "cube trace ..."
-# gpu_num=1
+echo "cube trace ..."
+gpu_num=1
 
-# rm $pt_list
-# CUDA_VISIBLE_DEVICES=0 ${torch_path}/torchrun \
-#     --nproc_per_node=$gpu_num \
-#     --master_port 29510 \
-#     evaluation/needle/needle_in_haystack.py \
-#     --s_len 0 --e_len 256000 \
-#     --context_lengths_min 1024 \
-#     --context_lengths_max 256000 \
-#     --context_lengths_num_intervals 20 \
-#     --document_depth_percent_intervals 5 \
-#     --model_provider Mistral \
-#     --model_path ${sft_setting["$model_sft"]} \
-#     --result_path ./evaluation/needle/result/$name/ \
-#     ${setting["$model_sft"]} \
-#     --flash_attn \
-#     --max_tokens 4000 \
-#     --prompt_template $prompt_name \
-#     --needle_type "origin" \
-#     --use_cube \
-#     --rope_method s_pi \
-#     --rope_tmps su \
-#     --use_cache \
-#     --tp_size $gpu_num \
-#     --cube_trace
-
-
-echo "cube run ..."
-gpu_num=8
-(
-CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 ${torch_path}/torchrun \
+rm $pt_list
+CUDA_VISIBLE_DEVICES=0 ${torch_path}/torchrun \
     --nproc_per_node=$gpu_num \
     --master_port 29510 \
     evaluation/needle/needle_in_haystack.py \
-    --s_len 0 --e_len 2000000 \
-    --context_lengths_min 1000 \
-    --context_lengths_max 2000000 \
-    --seq_series "1000,2000,4000,8000,16000,64000,128000,200000,400000,500000,800000" \
-    --context_lengths_num_intervals 10 \
+    --s_len 0 --e_len 256000 \
+    --context_lengths_min 1024 \
+    --context_lengths_max 256000 \
+    --context_lengths_num_intervals 20 \
     --document_depth_percent_intervals 5 \
     --model_provider Mistral \
     --model_path ${sft_setting["$model_sft"]} \
@@ -138,8 +110,43 @@ CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 ${torch_path}/torchrun \
     --rope_tmps su \
     --use_cache \
     --tp_size $gpu_num \
-    
-) 2>&1  | tee evaluation/needle/logs/eval_$name.log
+    --cube_trace
 
+prompt_list=(ANTHROPIC_TEMPLATE_ORIGINAL GEMINI_TEMPLATE2 GEMINI_TEMPLATE ANTHROPIC_TEMPLATE_REV2 ANTHROPIC_TEMPLATE_REV1 SIMPLE_TEMPLATE)
 
-python evaluation/needle/visualize.py --name ${nums}-${model_sft}-origin --path evaluation/needle/result/$name/
+# for ck in "${ck_list[@]}"; do
+for prompt_name in "${prompt_list[@]}"; do  
+    name="${nums}-cube_longrope_prompt_${prompt_name}_needle_origin"
+
+    echo "cube run ..."
+    gpu_num=8
+    (
+    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 ${torch_path}/torchrun \
+        --nproc_per_node=$gpu_num \
+        --master_port 29510 \
+        evaluation/needle/needle_in_haystack.py \
+        --s_len 0 --e_len 2000000 \
+        --context_lengths_min 1000 \
+        --context_lengths_max 2000000 \
+        --seq_series "1000,2000,4000,8000,16000,64000,128000,200000,400000,500000,800000" \
+        --context_lengths_num_intervals 10 \
+        --document_depth_percent_intervals 5 \
+        --model_provider Mistral \
+        --model_path ${sft_setting["$model_sft"]} \
+        --result_path ./evaluation/needle/result/$name/ \
+        ${setting["$model_sft"]} \
+        --flash_attn \
+        --max_tokens 4000 \
+        --prompt_template $prompt_name \
+        --needle_type "origin" \
+        --use_cube \
+        --rope_method s_pi \
+        --rope_tmps su \
+        --use_cache \
+        --tp_size $gpu_num \
+        
+    ) 2>&1  | tee evaluation/needle/logs/eval_$name.log
+
+    python evaluation/needle/visualize.py --name ${nums}-${prompt_name}-origin --path evaluation/needle/result/$name/
+done  
+

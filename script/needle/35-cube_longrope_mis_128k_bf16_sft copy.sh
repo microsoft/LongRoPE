@@ -5,7 +5,7 @@ path_dir=$path_team
 export TOKENIZERS_PARALLELISM=false
 
 # 检查是否传入了足够的参数  
-if [ $# -lt 1 ]; then  
+if [ $# -lt  ]; then  
     echo "Error: Insufficient arguments provided."  
     echo "Usage: $0 <model_sft> "  
     exit 1  
@@ -76,7 +76,7 @@ torch_path=$(dirname $python_path)
 
 nums=22
 name="${nums}-cube_longrope_${model_sft}_needle_origin"
-rm -rf ./evaluation/needle/result/$name
+# rm -rf ./evaluation/needle/result/$name
 
 # echo "{sft_setting["model_sft"]}: ${sft_setting["$model_sft"]}"
 # echo "{setting["model_sft"]}: ${setting["$model_sft"]}"
@@ -112,34 +112,35 @@ rm -rf ./evaluation/needle/result/$name
 #     --cube_trace
 
 
-echo "cube run ..."
-gpu_num=8
-(
-CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 ${torch_path}/torchrun \
-    --nproc_per_node=$gpu_num \
-    --master_port 29510 \
-    evaluation/needle/needle_in_haystack.py \
-    --s_len 0 --e_len 2000000 \
-    --context_lengths_min 1000 \
-    --context_lengths_max 2000000 \
-    --seq_series "1000,2000,4000,8000,16000,64000,128000,200000,400000,500000,800000" \
-    --context_lengths_num_intervals 10 \
-    --document_depth_percent_intervals 5 \
-    --model_provider Mistral \
-    --model_path ${sft_setting["$model_sft"]} \
-    --result_path ./evaluation/needle/result/$name/ \
-    ${setting["$model_sft"]} \
-    --flash_attn \
-    --max_tokens 4000 \
-    --prompt_template $prompt_name \
-    --needle_type "origin" \
-    --use_cube \
-    --rope_method s_pi \
-    --rope_tmps su \
-    --use_cache \
-    --tp_size $gpu_num \
+# echo "cube run ..."
+# gpu_num=8
+# (
+# CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 ${torch_path}/torchrun \
+#     --nproc_per_node=$gpu_num \
+#     --master_port 29510 \
+#     evaluation/needle/needle_in_haystack.py \
+#     --s_len 0 --e_len 2000000 \
+#     --context_lengths_min 1000 \
+#     --context_lengths_max 2000000 \
+#     --seq_series "1000,2000,4000,8000,16000,64000,128000,200000,400000,500000,800000" \
+#     --context_lengths_num_intervals 10 \
+#     --document_depth_percent_intervals 5 \
+#     --model_provider Mistral \
+#     --model_path ${sft_setting["$model_sft"]} \
+#     --result_path ./evaluation/needle/result/$name/ \
+#     ${setting["$model_sft"]} \
+#     --flash_attn \
+#     --max_tokens 4000 \
+#     --prompt_template $prompt_name \
+#     --needle_type "origin" \
+#     --use_cube \
+#     --rope_method s_pi \
+#     --rope_tmps su \
+#     --use_cache \
+#     --tp_size $gpu_num \
     
-) 2>&1  | tee evaluation/needle/logs/eval_$name.log
+# ) 2>&1  | tee evaluation/needle/logs/eval_$name.log
 
+# python evaluation/needle/visualize.py 
 
 python evaluation/needle/visualize.py --name ${nums}-${model_sft}-origin --path evaluation/needle/result/$name/

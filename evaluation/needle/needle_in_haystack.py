@@ -324,61 +324,6 @@ class LLMNeedleHaystackTester:
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
-    # def generate_prompt_old(self, context):
-    #     # Generate the prompt for the Anthropic model
-    #     # Replace the following line with the appropriate prompt structure
-    #     if self.prompt_template == "base":
-    #         if(self.model_provider not in ["OpenAI", "Anthropic"]):
-    #             test_format=f"<|im_start|> This is a very long story book: <book> {context} </book>.\n Based on the content of the book, Question: {self.retrieval_question}\nAnswer:"
-    #             return test_format
-    #         else: 
-    #             return [
-    #                 {
-    #                     "role": "system",
-    #                     "content": "You are a helpful AI bot that answers questions for a user. Keep your response short and direct"
-    #                 },
-    #                 {
-    #                     "role": "user",
-    #                     "content": context
-    #                     },
-    #                 {
-    #                     "role": "user",
-    #                     "content": f"{self.retrieval_question} Don't give information outside the document or repeat your findings. The document definitely contains the answer, and I'm 100% sure. So try your best to find it."
-    #                 },
-    #                 {
-    #                     "role": "assistant",
-    #                     "content":"",
-    #                 },
-                    
-    #             ]
-    #     elif self.prompt_template == "SIMPLE_TEMPLATE":
-    #         from prompt import SIMPLE_TEMPLATE
-    #         test_format = SIMPLE_TEMPLATE.format(question=self.retrieval_question, context=context)
-    #         return test_format
-    #     elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1":
-    #         from prompt import ANTHROPIC_TEMPLATE_REV1
-    #         test_format = ANTHROPIC_TEMPLATE_REV1.format(question=self.retrieval_question, context=context)
-    #         return test_format
-    #     elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV2":
-    #         from prompt import ANTHROPIC_TEMPLATE_REV2
-    #         test_format = ANTHROPIC_TEMPLATE_REV2.format(question=self.retrieval_question, context=context)
-    #         return test_format
-    #     elif self.prompt_template == "ANTHROPIC_TEMPLATE_ORIGINAL":
-    #         from prompt import ANTHROPIC_TEMPLATE_ORIGINAL
-    #         test_format = ANTHROPIC_TEMPLATE_ORIGINAL.format(question=self.retrieval_question, context=context)
-    #         return test_format
-    #     elif self.prompt_template == "GEMINI_TEMPLATE":
-    #         from prompt import GEMINI_TEMPLATE
-    #         test_format = GEMINI_TEMPLATE.format(question=self.retrieval_question, context=context)
-    #         return test_format
-    #     elif self.prompt_template == "GEMINI_TEMPLATE2":
-    #         from prompt import GEMINI_TEMPLATE2
-    #         test_format = GEMINI_TEMPLATE2.format(question=self.retrieval_question, context=context)
-    #         return test_format
-    #     elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1_ED":
-    #         from prompt import ANTHROPIC_TEMPLATE_REV1_ED
-    #         test_format = ANTHROPIC_TEMPLATE_REV1_ED.format(question=self.retrieval_question, context=context)
-    #         return test_format
     
     def split_template(self, template):  
         parts = template.split("{question}")  
@@ -472,28 +417,19 @@ class LLMNeedleHaystackTester:
         # template_list
         prompt_ids = self.generate_prompt(context_ids)
         
-        # print_single("$rm bos")
-        # prompt = prompt.replace("<s>", "")
-        # print_single(prompt_ids)
-        # print_single(self.enc.decode(prompt_ids.squeeze().tolist()))
-        # exit(0)
         
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):
             # import ipdb; ipdb.set_trace()
             response = self.model_to_test.chat.completions.create(
                 model=self.model_name,
-                messages=prompt,
+                messages=self.enc.decode(prompt_ids),
                 max_tokens=300,
                 temperature=0
             )
             response = response.choices[0].message.content
         else:
-            # print_single("begin tokenizer")
-            # print_single("prompt[:, -100:]", prompt[-100:])
-            # prompt = self.enc(prompt, return_tensors="pt")
-            # print_single("end tokenizer")
-            
+
             input_ids = prompt_ids.to(torch.cuda.current_device())
             if input_ids[0, -1] == self.enc.eos_token_id:
                 input_ids = input_ids[:, :-1]
@@ -590,8 +526,10 @@ class LLMNeedleHaystackTester:
 
                 # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
                 #     f.write(context)
+                context_ids_str = ' '.join(map(str, context_ids_list))  
+                    
                 with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
-                    f.write(context)  
+                    f.write(context_ids_str)  
             
         if self.save_results:
             # Save the context to file for retesting
@@ -643,20 +581,6 @@ class LLMNeedleHaystackTester:
                     if context_length_met and depth_percent_met and version_met and model_met:
                         return True
         return False
-
-    # def generate_context_old(self, context_length, depth_percent):
-    #     # Load up tiktoken so we navigate tokens more easily
-
-    #     # Get your Paul Graham files loaded into a string
-    #     context = self.read_context_files()
-
-    #     # Truncate the Paul Graham essays to the context length you desire
-    #     context = self.encode_and_trim(context, context_length)
-
-    #     # Insert your random statement according to your depth percent
-    #     context = self.insert_needle(context, depth_percent, context_length)
-
-    #     return context
     
     def generate_context(self, context_length, depth_percent):
         # Load up tiktoken so we navigate tokens more easily
@@ -675,62 +599,6 @@ class LLMNeedleHaystackTester:
         context_ids = self.insert_needle(context_ids, depth_percent, context_length)
 
         return context_ids
-    
-    # def encode_text_to_tokens(self, text):
-    #     if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
-    #         return self.enc.encode(text)
-    #     elif self.model_provider == "Anthropic":
-    #         # Assuming you have a different encoder for Anthropic
-    #         return self.enc.encode(text).ids
-    #     else:
-    #         raise ValueError("model_provider must be either 'OpenAI' or 'Anthropic'")
-    
-    # def insert_needle(self, context, depth_percent, context_length):
-    #     tokens_needle = self.encode_text_to_tokens(self.needle)
-    #     tokens_context = self.encode_text_to_tokens(context)
-
-    #     print_single("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
-    #     if tokens_needle[-1] == self.enc.eos_token_id:
-    #         tokens_needle = tokens_needle[:-1]
-    #     print_single("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
-        
-    #     # Reducing the context length by 150 buffer. This is to account for system message, the user question, and response.
-    #     context_length -= self.final_context_length_buffer
-
-    #     # If your context + needle are longer than the context length (which it will be), then reduce tokens from the context by the needle length
-    #     if len(tokens_context) + len(tokens_needle) > context_length:
-    #         tokens_context = tokens_context[:context_length - len(tokens_needle)]
-
-    #     if depth_percent == 100:
-    #         # If your depth percent is 100 (which means your needle is the last thing in the doc), throw it at the end
-    #         tokens_new_context = tokens_context + tokens_needle
-    #     else:
-    #         # Go get the position (in terms of tokens) to insert your needle
-    #         insertion_point = int(len(tokens_context) * (depth_percent / 100))
-    #         # import ipdb; ipdb.set_trace()
-
-    #         # tokens_new_context represents the tokens before the needle
-    #         tokens_new_context = tokens_context[:insertion_point]
-
-    #         # We want to make sure that we place our needle at a sentence break so we first see what token a '.' is
-    #         if(self.model_provider in ["LLaMA", "LongLLaMA"]): period_tokens = [29889, 869]
-    #         elif(self.model_provider == "Mistral"): period_tokens = [842, 28723]
-    #         elif(self.model_provider == "GLM"): period_tokens = [918, 30930]
-    #         else: period_tokens = self.encode_text_to_tokens('.')
-            
-    #         # Then we iteration backwards until we find the first period
-    #         while tokens_new_context and tokens_new_context[-1] not in period_tokens:
-    #             insertion_point -= 1
-    #             tokens_new_context = tokens_context[:insertion_point]
-
-    #         print_single("insertion at %d" % insertion_point)
-    #         # Once we get there, then add in your needle, and stick the rest of your context in on the other end.
-    #         # Now we have a needle in a haystack
-    #         tokens_new_context += tokens_needle + tokens_context[insertion_point:]
-
-    #     # Convert back to a string and return it
-    #     new_context = self.decode_tokens(tokens_new_context)
-    #     return new_context
 
     def insert_needle(self, context_ids, depth_percent, context_length):
         # tokens_needle = self.encode_text_to_tokens(self.needle)

@@ -110,6 +110,8 @@ class LLMNeedleHaystackTester:
                  args_rope = None,
                  prompt_template="base",
                  seq_series = None,
+                 file_order_idx=0,
+                 use_books_idx=None,
                  ):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
@@ -157,6 +159,9 @@ class LLMNeedleHaystackTester:
         self.args_rope = args_rope
         self.prompt_template = prompt_template
         self.seq_series = seq_series
+        self.file_order_idx = file_order_idx
+        self.use_books_idx = use_books_idx
+        
         if("/" in model_name):
             self.model_version = model_name.split("/")[-1]
         else: self.model_version = model_name
@@ -437,6 +442,8 @@ class LLMNeedleHaystackTester:
             # print_single("input_ids[:, -5:]", input_ids[:, -5:])
             
             print_single("begin generate, context_length", context_length)
+            if context_length < 2000:
+                print(self.enc.decode(input_ids.cpu().squeeze().tolist(), skip_special_tokens=True))
             
             # test ppl
             with torch.no_grad():
@@ -586,7 +593,10 @@ class LLMNeedleHaystackTester:
         # Load up tiktoken so we navigate tokens more easily
 
         # Get your Paul Graham files loaded into a string
-        context_ids = self.read_context_files()
+        if self.use_books_idx != None:
+            context_ids = self.load_books()
+        else:
+            context_ids = self.read_context_files()
 
         # Truncate the Paul Graham essays to the context length you desire
         # context = self.encode_and_trim(context, context_length)
@@ -667,8 +677,20 @@ class LLMNeedleHaystackTester:
         # new_context = self.decode_tokens(tokens_new_context)
         return tokens_new_context
 
-    def read_context_files(self):  
-        from prompt import file_list_pt  
+    def read_context_files(self):
+          
+        # from prompt import file_list_pt
+        
+        try:  
+            with open('evaluation/needle/file_list_dict.json', 'r') as json_file:  
+                file_list_dict = json.load(json_file)  
+        except FileNotFoundError:  
+            raise("File not found: file_list_dict.json")  
+        except json.JSONDecodeError:  
+            raise("File is not in a valid JSON format")
+            
+        file_list_pt = file_list_dict[str(self.file_order_idx)]
+        
         max_context_length = max(self.context_lengths)  
         curr_context_length = 0  
         context_ids = torch.tensor([], dtype=torch.int64)  
@@ -682,15 +704,12 @@ class LLMNeedleHaystackTester:
                     break  # 一旦达到最大上下文长度，就跳出循环  
         
         return context_ids  
+        
+    def load_books(self):
+        books_path = f"evaluation/needle/books_data/books_{self.use_books_idx}_mistral.pt"
+        context_ids = torch.load(books_path)
 
-    # def get_tokens_from_context(self, context):
-    #     if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
-    #         return self.enc.encode(context)
-    #     elif self.model_provider == "Anthropic":
-    #         # Assuming you have a different encoder for Anthropic
-    #         return self.enc.encode(context).ids
-    #     else:
-    #         raise ValueError("model_provider must be either 'OpenAI' or 'Anthropic'")
+        return context_ids  
         
     def decode_tokens(self, tokens, context_length=None):
         if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
@@ -753,10 +772,14 @@ if __name__ == "__main__":
     parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
     
     parser.add_argument("--max_tokens", type=int, default=8192)
+    
     parser.add_argument("--prompt_template", type=str, default="ANTHROPIC_TEMPLATE_ORIGINAL")
     parser.add_argument("--needle_type", type=str, default="origin")
     parser.add_argument("--city_idx", type=int, default=25)
     parser.add_argument("--random_num", type=int, default=4571243)
+    parser.add_argument("--file_order_idx", type=int, default=0)
+    parser.add_argument("--use_books_idx", type=int, default=None)
+    
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )
     
@@ -839,7 +862,9 @@ if __name__ == "__main__":
                                  prompt_template=args.prompt_template,
                                  needle=origin_needle if args.needle_type=="origin" else needle,
                                  retrieval_question = origin_retrieval_question if args.needle_type=="origin" else retrieval_question,
-                                 seq_series = args.seq_series
+                                 seq_series = args.seq_series,
+                                 file_order_idx=args.file_order_idx,
+                                 use_books_idx=args.use_books_idx
                                  )
     if not args.cube_trace:
         ht.start_test(args)

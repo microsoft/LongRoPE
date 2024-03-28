@@ -42,7 +42,7 @@ torch_path=$(dirname $python_path)
 
 
 name="33-2m-cube_longrope_mis_256k_sft_ck_${ck_step}_debug_${prompt_name}_needle_origin"
-rm -rf ./evaluation/needle/result/$name
+# rm -rf ./evaluation/needle/result/$name
 
 # echo "cube trace ..."
 # gpu_num=1
@@ -79,35 +79,35 @@ for books_idx in "${books_list[@]}"; do
     name="41-cube_longrope_mis_256k_bf16_from500_ck_${ck_step}_debug_needle_origin_books_${books_idx}"
     echo "books_idx:$books_idx"
 
-    echo "cube run ..."
-    gpu_num=8
-    (
-    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
-        --nproc_per_node=$gpu_num \
-        --master_port 29510 \
-        evaluation/needle/needle_in_haystack.py \
-        --s_len 0 --e_len 2000000 \
-        --seq_series "1000,400000,800000,100000,1500000,1800000,2000000" \
-        --city_idx 15 \
-        --random_num 6072345 \
-        --file_order_idx 0 \
-        --use_books_idx $books_idx \
-        --document_depth_percent_intervals 5 \
-        --model_provider Mistral \
-        --model_path ${mistral_256k} \
-        --result_path ./evaluation/needle/result/$name/ \
-        ${setting["longrope_256k"]} \
-        --flash_attn \
-        --max_tokens 4000 \
-        --prompt_template $prompt_name \
-        --needle_type "origin" \
-        --use_cube \
-        --rope_method s_pi \
-        --rope_tmps su \
-        --use_cache \
-        --tp_size $gpu_num \
+    # echo "cube run ..."
+    # gpu_num=8
+    # (
+    # CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
+    #     --nproc_per_node=$gpu_num \
+    #     --master_port 29510 \
+    #     evaluation/needle/needle_in_haystack.py \
+    #     --s_len 0 --e_len 2000000 \
+    #     --seq_series "1000,400000,800000,100000,1500000,1800000,2000000" \
+    #     --city_idx 15 \
+    #     --random_num 6072345 \
+    #     --file_order_idx 0 \
+    #     --use_books_idx $books_idx \
+    #     --document_depth_percent_intervals 5 \
+    #     --model_provider Mistral \
+    #     --model_path ${mistral_256k} \
+    #     --result_path ./evaluation/needle/result/$name/ \
+    #     ${setting["longrope_256k"]} \
+    #     --flash_attn \
+    #     --max_tokens 4000 \
+    #     --prompt_template $prompt_name \
+    #     --needle_type "origin" \
+    #     --use_cube \
+    #     --rope_method s_pi \
+    #     --rope_tmps su \
+    #     --use_cache \
+    #     --tp_size $gpu_num \
         
-    ) 2>&1  | tee evaluation/needle/logs/eval_${name}.log
+    # ) 2>&1  | tee evaluation/needle/logs/eval_${name}.log
 
     # python evaluation/needle/visualize.py 
 

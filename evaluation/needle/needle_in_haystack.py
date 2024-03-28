@@ -192,6 +192,8 @@ class LLMNeedleHaystackTester:
         else:
             self.document_depth_percents = document_depth_percents
 
+        print("self.document_depth_percents", self.document_depth_percents)
+        
         if document_depth_percent_interval_type not in [None, "linear", "sigmoid"]:
             raise ValueError("document_depth_percent_interval_type must be either None, 'linear' or 'sigmoid'. If you'd like your own distribution give a list of ints in via document_depth_percent_intervals")
         
@@ -766,7 +768,7 @@ if __name__ == "__main__":
     parser.add_argument('--document_depth_percent_intervals', type=int, default=10, help='document_depth_percent_intervals')
     
     parser.add_argument('--seq_series', type=str, default=None, help='seq_series')
-    
+    parser.add_argument("--doc_depth_series", type=str, default=None)
     
     parser.add_argument('--haystack_dir', type=str, default="./evaluation/needle/PaulGrahamEssays", help='path to PaulGrahamEssays')
     parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
@@ -804,6 +806,12 @@ if __name__ == "__main__":
     else: 
         assert(args.model_name is not None)
         model_name = args.model_name
+    
+    
+    if args.doc_depth_series != None:
+        doc_depth_series_list = args.doc_depth_series.split(",")
+        document_depth_percents = [int(item) for item in doc_depth_series_list]
+        document_depth_percents = np.array(document_depth_percents)
     
     origin_needle = "\nThe special magic {city} number is: {rnd_number}\n"
     origin_retrieval_question ="What is the special magic {city} number?"
@@ -864,7 +872,8 @@ if __name__ == "__main__":
                                  retrieval_question = origin_retrieval_question if args.needle_type=="origin" else retrieval_question,
                                  seq_series = args.seq_series,
                                  file_order_idx=args.file_order_idx,
-                                 use_books_idx=args.use_books_idx
+                                 use_books_idx=args.use_books_idx,
+                                 document_depth_percents=document_depth_percents
                                  )
     if not args.cube_trace:
         ht.start_test(args)

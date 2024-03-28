@@ -42,7 +42,7 @@ torch_path=$(dirname $python_path)
 
 
 name="33-2m-cube_longrope_mis_256k_sft_ck_${ck_step}_debug_${prompt_name}_needle_origin"
-rm -rf ./evaluation/needle/result/$name
+# rm -rf ./evaluation/needle/result/$name
 
 # echo "cube trace ..."
 # gpu_num=1
@@ -74,7 +74,7 @@ rm -rf ./evaluation/needle/result/$name
 
 # for ck in "${ck_list[@]}"; do
 # 14 11 9 8 4
-books_list=(19 7 16 15 )
+books_list=(9 8 4)
 for books_idx in "${books_list[@]}"; do  
     name="41-cube_longrope_mis_256k_bf16_from500_ck_${ck_step}_debug_needle_origin_books_${books_idx}"
     echo "books_idx:$books_idx"
@@ -111,6 +111,6 @@ for books_idx in "${books_list[@]}"; do
 
     # python evaluation/needle/visualize.py 
 
-    python evaluation/needle/visualize.py --name 41-file_idx-bf16-256k-origin-file-${file_idx} --path evaluation/needle/result/$name/ck-$ck_step/
+    python evaluation/needle/visualize.py --name 41-file_idx-bf16-256k-origin-file-${books_idx} --path evaluation/needle/result/$name/ck-$ck_step/
 
 done

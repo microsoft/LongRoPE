@@ -63,8 +63,17 @@ print("sample nums", len(input_texts['input_ids']))
 # text = tokenizer.decode(out_ids, skip_special_tokens=True) 
 # print(text)
 
-for p in [19, 16, 15, 14, 11, 9, 8, 4]:
+# for p in [19, 16, 15, 14, 11, 9, 8, 4]:
+for p in [19]:
     input_text = input_texts['input_ids'][p]
     input_ids_tensor = torch.tensor([input_text], dtype=torch.int64)  
-    pt_path = f"/mnt/yiran/LongRoPE/evaluation/needle/books_{p}_mistral.pt"
-    torch.save(input_ids_tensor.cpu(), pt_path)
+    
+    # pt_path = f"/mnt/yiran/LongRoPE/evaluation/needle/books_{p}_mistral.pt"
+    # torch.save(input_ids_tensor.cpu(), pt_path)
+    
+    out_ids = torch.cat((input_ids_tensor[0, :2000], input_ids_tensor[0, -2000:])) 
+    text = tokenizer.decode(out_ids, skip_special_tokens=True) 
+    with open("text_books19.txt", "w", encoding="utf-8") as file:
+        file.write(f"{p}: {len(input_text)}\n")  # 写入序号和长度  
+        file.write(text + "\n\n")  # 写入解码的文本并加上换行符  
+    

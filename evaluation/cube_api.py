@@ -72,12 +72,19 @@ def generate(args, model, infer_fn, config, tokenizer, prompt_ids, pass_key=None
                     para_key = 'ft_mis_128k'
                 rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
                 # dict_keys(['1024k_la2_128k', '1024k_mis_256k', '2048k_mis_128k', '256k_mis_128k', '512k_mis_128k', '1024k_la2_256k', '2048k_la2_128k', '2048k_mis_256k', '512k_la2_128k', '512k_mis_256k', '1024k_mis_128k', '2048k_la2_256k', '256k_la2_128k', '512k_la2_256k', '16k_la2_128k', '8k_la2_128k', '4k_la2_256k', '8k_mis_128k', '32k_la2_128k', '16k_la2_256k', '8k_la2_256k', '4k_mis_256k', '4k_la2_128k', '32k_la2_256k', '4k_mis_128k', '8k_mis_256k', 'ft_la2_128k', 'ft_la2_256k', 'ft_mis_128k'])
-                if torch.distributed.get_rank() == 0:
-                    print("$$max_tokens", max_tokens, "para_key", para_key)
                 
-                lambda_1 = rope_rescale[para_key]
+                    
+                if args.static_scale != None:
+                    lambda_1 = rope_rescale[args.static_scale]
+                    print("$$max_tokens", max_tokens, "para_key", args.static_scale)
+                else: 
+                    lambda_1 = rope_rescale[para_key]
+                    if torch.distributed.get_rank() == 0:
+                        print("$$max_tokens", max_tokens, "para_key", para_key)
+                    
             else:
                 raise ValueError("max_tokens == None")  
+            
         elif args.method == "longrope" and not args.finetuned:
             if args.longrope_para != None:
                 if torch.distributed.get_rank() == 0:

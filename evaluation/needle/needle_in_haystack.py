@@ -792,6 +792,8 @@ if __name__ == "__main__":
     parser.add_argument("--rope_method", type=str, default="s_pi")
     parser.add_argument("--rope_tmps", type=str, default="su")
     
+    parser.add_argument("--static_scale", type=str, default=None)
+    
     from evaluation.model_loader_llama import add_args
     # parser= argparse.ArgumentParser()
     parser = add_args(parser)

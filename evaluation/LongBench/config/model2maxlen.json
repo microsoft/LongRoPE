@@ -1,0 +1,16 @@
+{
+    "llama2-7b-chat-4k": 3500,
+    "llama2-7b": 3500,
+    "longrope-llama-128k": 31500,
+    "longrope-llama-256k": 31500,
+    "mistral-7b": 3500,
+    "longrope-mistral-128k": 31500,
+    "longrope-mistral-256k": 31500,
+    "longchat-v1.5-7b-32k": 31500,
+    "xgen-7b-8k": 7500,
+    "internlm-7b-8k": 7500,
+    "chatglm2-6b": 31500,
+    "chatglm2-6b-32k": 31500,
+    "chatglm3-6b-32k": 31500,
+    "vicuna-v1.5-7b-16k": 15500
+}

@@ -875,7 +875,7 @@ if __name__ == "__main__":
                                  seq_series = args.seq_series,
                                  file_order_idx=args.file_order_idx,
                                  use_books_idx=args.use_books_idx,
-                                 document_depth_percents=document_depth_percents
+                                 document_depth_percents=document_depth_percents if args.doc_depth_series else None
                                  )
     if not args.cube_trace:
         ht.start_test(args)

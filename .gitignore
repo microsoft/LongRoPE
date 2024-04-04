@@ -418,3 +418,5 @@ evolution/search_result/final-dim_mono-4100-it-4_1_2.pt
 evaluation/log.txt
 contexts-1/
 gpu_temp.txt
+script/ppl_eval/*
+

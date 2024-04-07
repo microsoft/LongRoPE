@@ -11,7 +11,7 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
                  lambda_1=np.zeros((64,)), finetuned=False,
                  original_max_position_embeddings=4096,
                  mscale = 1.0,
-                #  tmps="su"
+                 tmps="su"
                 ):
         super().__init__()
         
@@ -25,7 +25,7 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         self.mscale = mscale
         self.original_max_position_embeddings = original_max_position_embeddings
         
-        # self.tmps = tmps
+        self.tmps = tmps
         
         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim))
         self.register_buffer("inv_freq", inv_freq)
@@ -55,8 +55,17 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             
         assert base_1.shape[0] == dim // 2 , f"lambda_1 error : {base_1.shape[0]}"
         # print("seq_len, base_1[-1]", seq_len, base_1[-1])
-        self.mscale = float(self._get_mscale_su(scaling_factor))
-        
+        if self.tmps == "su":
+            self.mscale = float(self._get_mscale_su(scaling_factor))
+        elif self.tmps == "non":
+            self.mscale = 1.0
+        else:
+            try:
+                self.mscale = float(self.tmps)
+            except:
+                raise("self.tmps is not float")
+            
+        print(self.mscale)
         inv_freq = 1.0 / ( base_1 * ( self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)) )
         
         self.register_buffer("inv_freq", inv_freq)

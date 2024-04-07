@@ -174,7 +174,7 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                # tmps=args.tmps
+                tmps=args.tmps
             ) 
             layer += 1
     
@@ -206,7 +206,7 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                # tmps=args.tmps,
+                tmps=args.tmps,
                 start_token=args.stream,
                 cos_sin_origin=cos_sin_origin
             ) 
@@ -230,7 +230,7 @@ def load_model(model, args):
                 finetuned=args.finetuned, 
                 device=each.self_attn.rotary_emb.inv_freq.device,
                 lambda_1=lambda_1[layer, :],
-                # tmps=args.tmps
+                tmps=args.tmps
             ) 
             layer += 1
 

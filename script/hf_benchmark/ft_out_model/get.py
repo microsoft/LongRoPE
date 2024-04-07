@@ -3,8 +3,10 @@ import json
 import os  
   
 # 文件名模板和变量  
-file_template = "ck-{ck_step}-{job_name}-longrope-bs2_mis_128k_step{ck_step}.json"  
-ck_steps = ["1_1000", "1_900", "1_800", "1_700", "1_600", "1_500", "1_400", "1_300", "1_200", "1_100"]  
+# /mnt/yiran/LongRoPE-main/LongRoPE/script/hf_benchmark/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_350/-{job_name}-longrope-bs2_mis_256k_bf16-step-500_step{ck_step}.json
+file_template = "-{job_name}-longrope-bs2_mis_256k_bf16-step-500_step{ck_step}.json"  
+# ck_steps = ["1_1000", "1_900", "1_800", "1_700", "1_600", "1_500", "1_400", "1_300", "1_200", "1_100"]
+ck_steps = ["1_500", "1_450", "1_400", "1_350", "1_300", "1_250", "1_200", "1_150", "1_100", "1_50"]
 job_names = ["ARC", "HELLASWAG", "MMLU", "TRUTHFULQA"]  
   
 # 初始化一个空的字典，用来存储结果数据  
@@ -14,8 +16,8 @@ results_dict = {job_name: [] for job_name in job_names}
 for ck_step in ck_steps:  
     for job_name in job_names:  
         file_name = file_template.format(ck_step=ck_step, job_name=job_name)  
-        file_path = f'script/hf_benchmark/ft_out_model/cube-mis-128k-bf16/{file_name}'  
-          
+        file_path = f'/mnt/yiran/LongRoPE-main/LongRoPE/script/hf_benchmark/ft_out_model/cube-mis-256k-bf16-step-500/ck-{ck_step}/{file_name}'  
+        
         # 初始设置为NaN，以防文件不存在或无法读取数据  
         result = pd.NA  
           

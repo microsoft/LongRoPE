@@ -1,7 +1,8 @@
 import numpy as np    
 import pandas as pd    
     
-config_list = ["longrope_128k", "longrope_256k", "longrope_128k_mistral", "longrope_256k_mistral"]    
+# config_list = ["longrope_128k", "longrope_256k", "longrope_128k_mistral", "longrope_256k_mistral"]   
+config_list = ["longrope_mistral_128k_bf16", "longrope_mistral_256k_bf16_from_step500"]
 seq_len_list = [4096, 8192]    
 tmps_list = [0.8, 0.85, 0.9, 0.95, 1.0, 1.01, 1.02, 1.03, 1.04, 1.05, 1.06, 1.07, 1.08, 1.09, 1.1, 1.11, 1.12, 1.13, 1.14, 1.15, 1.2, 1.25, 1.3]    
 # 初始化DataFrame    
@@ -10,7 +11,8 @@ dataframes = {config: pd.DataFrame(index=seq_len_list, columns=tmps_list) for co
 # 填充DataFrame    
 for config in config_list:    
     for seq_len in seq_len_list:    
-        for tmps in tmps_list:    
+        for tmps in tmps_list:   
+            # /mnt/yiran/LongRoPE-main/LongRoPE/script/ppl_eval/tmp/proofpile_longrope_mistral_128k_bf16_4096_0.8.csv
             f_name = f"script/ppl_eval/tmp/proofpile_{config}_{seq_len}_{tmps}.csv"    
                 
             # 读取CSV文件    

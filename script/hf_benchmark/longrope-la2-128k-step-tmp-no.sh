@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # run job
-# ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
+# ./script/hf_benchmark/longrope-mis-128k-step-tmp-no.sh 7 ARC 1_100
 
-# ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 ARC 1.0 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 ARC 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 HELLASWAG 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 MMLU 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 TRUTHFULQA 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 ARC 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 HELLASWAG 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 MMLU 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 TRUTHFULQA 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 ARC 1.13 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 HELLASWAG 1.13 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 MMLU 1.13 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 0 TRUTHFULQA 1.13 ; 
+# ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 ARC 1.0 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 ARC 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 HELLASWAG 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 MMLU 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 TRUTHFULQA 1.11 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 ARC 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 HELLASWAG 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 MMLU 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 TRUTHFULQA 1.12 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 ARC 1.13 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 HELLASWAG 1.13 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 MMLU 1.13 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp-no.sh 7 TRUTHFULQA 1.13 ; 
 
 # 定义有效的 job_name 选项和 CUDA_VISIBLE_DEVICES 范围  
 VALID_JOB_NAMES=("ARC" "HELLASWAG" "MMLU" "TRUTHFULQA")  
@@ -86,11 +86,11 @@ BASE_PATH=$path_dir
 MODEL_PATH="/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400/"
 
 METHOD="longrope"
-MARK="bs2_la2_128k_tmps${tmps}"
+MARK="bs2_la2_128k_tmps${tmps}-noscale"
 FACTOR=32
 SPI_PARA="./script/hf_benchmark/low_scale/low_scale_la2_128k_4k.csv"
 
-MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=true,tmps=${tmps},longrope_para=${SPI_PARA},original_max_position_embeddings=4096,cache_dir=./cache_dir"
+MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=flase,tmps=${tmps},original_max_position_embeddings=4096,cache_dir=./cache_dir"
 
 OUTPUT_PATH="./script/hf_benchmark/tmp-search"
 

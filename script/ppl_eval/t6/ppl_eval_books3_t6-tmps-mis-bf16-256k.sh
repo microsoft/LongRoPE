@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=3
+export CUDA_VISIBLE_DEVICES=1
 
 # path_dir=/your/path/to/store/model/or/dataset
 # your path to model
@@ -27,12 +27,11 @@ BOOKS3="--tokenized ${path_team}/books3-test-sampled-1024k-tokenized --dataset_m
 cache_dir="../cache_dir"
 output_dir=./script/ppl_eval/t6
 
-save_memory="\
---aggressive_mem_causal_lm"
+save_memory=""
 # save_memory="" # check
 
 # config_list=("longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
-config_list=("longrope_256k" ) # check
+config_list=("longrope_mistral_256k_bf16_from_step500" ) # check
 
 echo "dataset BOOKS3 20sample"
 # max_tokens_list=(8192 32768 65536 98304 131072 262144 524288 1048576)

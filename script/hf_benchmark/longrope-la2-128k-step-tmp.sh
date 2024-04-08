@@ -90,7 +90,7 @@ MARK="bs2_la2_128k_tmps${tmps}"
 FACTOR=32
 SPI_PARA="./script/hf_benchmark/low_scale/low_scale_la2_128k_4k.csv"
 
-MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=true,tmps=${tmps},longrope_para=${SPI_PARA},original_max_position_embeddings=4096,cache_dir=./cache_dir"
+MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=true,tmps=${tmps},longrope_para=${SPI_PARA},original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4100"
 
 OUTPUT_PATH="./script/hf_benchmark/tmp-search"
 

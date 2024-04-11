@@ -108,12 +108,13 @@ class sPiAutoLM(AutoCausalLM):
         print("$load")
         if "Mistral" in model or "mistral" in model:
             print(model)
-            sys.path.append("/mnt/yiran/LongRoPE")
+            sys.path.append("/data/yiran/LongRoPE")
             from evaluation.model_loader_mistral import load_model_and_apply_patches_mistral
             self.model, _ = load_model_and_apply_patches_mistral(model, args)
         else:
             print(model)
-            sys.path.append("/mnt/yiran/LongRoPE")
+            print("$1 args.tmps", args.tmps)
+            sys.path.append("/data/yiran/LongRoPE")
             from evaluation.model_loader_llama import load_model_and_apply_patches
             self.model, _ = load_model_and_apply_patches(model, args)
         

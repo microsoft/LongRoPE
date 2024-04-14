@@ -4,3 +4,9 @@ mlruns
 build
 dist
 tmp*
+<<<<<<< HEAD
+cube-new/script/t.py
+=======
+cube-new/script/*.log
+
+>>>>>>> 87cb0e4... 50002

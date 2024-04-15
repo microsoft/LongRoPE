@@ -429,3 +429,9 @@ books_min2097152.pt
 books_type_llama_min2097152.pt
 books_type_mistral_min2097152.pt
 script/ppl_eval/t6/result/
+evaluation/512k-la2-128k.csv
+evaluation/512k-mis-128k.csv
+evaluation/1024k-mis-128k.csv
+evaluation/1024k-mis-256k.csv
+evaluation/2048k-mis-128k.csv
+evaluation/2048k-mis-256k.csv

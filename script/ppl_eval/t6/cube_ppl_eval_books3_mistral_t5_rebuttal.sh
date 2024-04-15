@@ -43,9 +43,9 @@ setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mist
 setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor $((1048576 / 262144)) --original_max_position_embeddings 4096"
 
 
-# setting["longrope_mistral_128k_bf16"]="--model ${path_team}/ft_out_model/cube-mis-128k-bf16/ck-1_1000 --method longrope  --finetuned --factor 32.0 --sliding_window_attention 131072"
+setting["longrope_mistral_128k_bf16"]="--model ${path_team}/ft_out_model/cube-mis-128k-bf16/ck-1_1000 --method longrope  --finetuned --factor $((1048576 / 131072)) --original_max_position_embeddings 4096"
 
-# setting["longrope_mistral_256k_bf16_from_step500"]="--model ${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500 --method longrope  --finetuned --factor 64.0 --sliding_window_attention 262144"
+setting["longrope_mistral_256k_bf16_from_step500"]="--model ${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500 --method longrope  --finetuned --factor $((1048576 / 262144)) --original_max_position_embeddings 4096"
 
 
 # dataset setting
@@ -59,7 +59,7 @@ BOOKS3_256K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized-mistral
 BOOKS3_2048K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized-mistral --dataset_min_tokens 2097152 --samples 5 --sliding_window 1048576"
 
 cache_dir="../cache_dir"
-output_dir=./evaluation/result
+output_dir=./script/ppl_eval/t6/re2
 
 # save_memory="\
 # --aggressive_mem_causal_lm \
@@ -72,14 +72,16 @@ save_memory="" # check
 
 # config_list=("codellama") # check
 
-config_list=("longrope_128k_mistral" "longrope_256k_mistral")
+# config_list=("longrope_128k_mistral" "longrope_256k_mistral")
 # "longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500")
 
-# config_list=()
+# config_list=("longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500")
+config_list=("longrope_mistral_128k_bf16")
+
 
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
 
-max_tokens_list=(8192 131072 262144 524288 1048576 2097152)
+# max_tokens_list=(8192 16384 32768 65536 131072 262144 524288 1048576 2097152)
 max_tokens_list=(1048576)
 for config in "${config_list[@]}"; do
 
@@ -95,7 +97,7 @@ for config in "${config_list[@]}"; do
         --max_tokens $max_tokens \
         --min_tokens $max_tokens \
         --tokens_step 2048 \
-        --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
+        --output_file "${output_dir}/t6_proofpile_${config}_${max_tokens}.csv" \
         --original_max_position_embeddings 4096 \
         --flash_attn \
         ${save_memory} \

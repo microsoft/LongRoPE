@@ -16,7 +16,7 @@ declare -A setting
 setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-128k/ck-400 --method longrope --finetuned --factor 32.0 --original_max_position_embeddings 4096 --sliding_window_attention 131072"
 
 # longrope Mistral 256k
-setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original_max_position_embeddings 4096 --sliding_window_attention 262144"
+setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original_max_position_embeddings 4096 "
 
 
 setting["longrope_mistral_128k_bf16"]="--model ${path_team}/ft_out_model/cube-mis-128k-bf16/ck-1_1000 --method longrope  --finetuned --factor 32.0 --sliding_window_attention 131072"
@@ -36,7 +36,7 @@ BOOKS3_256K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized-mistral
 BOOKS3_2048K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized-mistral --dataset_min_tokens 2097152 --samples 20 --sliding_window 1048576"
 
 cache_dir="../cache_dir"
-output_dir=./script/ppl_eval/t6/result
+output_dir=./script/ppl_eval/t6/re2
 
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
@@ -56,12 +56,12 @@ save_memory="" # check
 # config_list=("longrope_128k_mistral" "longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500")
 
 config_list=("longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500")
-# config_list=()
+# config_list=("longrope_256k_mistral")
 
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
 
-# max_tokens_list=(8192 131072 262144 524288 1048576 2097152)
-max_tokens_list=(1048576)
+max_tokens_list=(8192 131072 262144 524288 1048576 2097152)
+# max_tokens_list=(8192)
 for config in "${config_list[@]}"; do
 
     gpu_num=1

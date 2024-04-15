@@ -429,3 +429,6 @@ books_min2097152.pt
 books_type_llama_min2097152.pt
 books_type_mistral_min2097152.pt
 script/ppl_eval/t6/result/
+script/ppl_eval/t6/re2/*
+
+script/ppl_eval/t6/mis-1m/*

@@ -30,6 +30,8 @@ declare -A setting
 
 setting["longrope_128k_pose_512k_static_scale"]="--model ${path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/ --method longrope --longrope_para /mnt/yiran/Models-Cube/512k-la2-128k.csv --factor 128.0 "
 
+setting["longrope_128k"]="--model ${path_dir}/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400/ --method longrope --finetuned --factor 32.0"
+
 # dataset setting
 # PROOFPILE_test="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 1 --truncate"
 
@@ -61,13 +63,17 @@ save_memory="" # check
 # config_list=("longrope_128k_mistral" "longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500")
 
 config_list=("longrope_128k_pose_512k_static_scale")
+config_list=("longrope_128k")
+
 # config_list=()
 python_path=$(which python)
 torch_path=$(dirname $python_path)
-# max_tokens_list=(4096 8192 32768 65536 98304 131072)
+# max_tokens_list=(4096 8192 32768 65536 98304 131072 1048576)
 
-max_tokens_list=(8192 131072 262144)
-# max_tokens_list=(1048576)
+# max_tokens_list=(8192 131072 262144)
+
+max_tokens_list=(524288 )
+
 for config in "${config_list[@]}"; do
 
     gpu_num=1
@@ -98,6 +104,7 @@ for config in "${config_list[@]}"; do
     gpu_num=8
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"
+        rm -rf /tmp/tmp*
         if (( max_tokens <= 262144 )); then  
             dataset=${BOOKS3_256K}  
         else  

@@ -97,6 +97,7 @@ for config in "${config_list[@]}"; do
     echo "config: $config run ... ... "
     gpu_num=8
     for max_tokens in "${max_tokens_list[@]}"; do
+        rm -rf /tmp/tmp*
         echo "####### $config, max-tokens=$max_tokens #############"
         if (( max_tokens <= 262144 )); then  
             dataset=${BOOKS3_256K}  

@@ -279,7 +279,7 @@ def compute_perplexity(
     use_cache=False
 ):
     # sliding_window = sliding_window * 16
-    print("sliding_window", sliding_window)
+    # print("sliding_window", sliding_window)
     r"""Compute "sliding window" perplexity on a dataset. Validated against the calculations reported in arXiv 2306.15595  """
     if device is not None:
         assert device in ["gpu", "cpu",

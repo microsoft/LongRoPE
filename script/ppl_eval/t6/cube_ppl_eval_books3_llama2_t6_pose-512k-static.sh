@@ -28,7 +28,9 @@ declare -A setting
 # la2 pose 512k
 # setting["longrope_128k_pose_512k_dy_scale"]="--model ${path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/ --method longrope  --finetuned --factor 128.0 "
 
-setting["longrope_128k_pose_512k_static_scale"]="--model ${path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/ --method longrope --longrope_para /mnt/yiran/Models-Cube/512k-la2-128k.csv --factor 128.0 "
+# setting["longrope_128k_pose_512k_static_scale"]="--model ${path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/ --method longrope --longrope_para /mnt/yiran/Models-Cube/512k-la2-128k.csv --factor 128.0 "
+
+setting["longrope_128k_pose_512k_static_scale-new-scale-128"]="--model ${path_team}/ft_out_model/cube-la2-128k-pose-256k-new/ck-1_400/ --method longrope --longrope_para ./script/longrope_scale/512k-la2-128k.csv --factor 1.0 "
 
 # dataset setting
 # PROOFPILE_test="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 1 --truncate"
@@ -41,7 +43,9 @@ BOOKS3_256K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized --datas
 BOOKS3_2048K="--tokenized ${path_dir}/books3-test-sampled-1024k-tokenized --dataset_min_tokens 2097152 --samples 20 --sliding_window 1048576"
 
 cache_dir="/mnt/yiran/cache_dir"
-output_dir=./script/ppl_eval/t6/result
+output_dir=./script/ppl_eval/t6/la2-pose
+
+mkdir -p $output_dir
 
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
@@ -60,13 +64,13 @@ save_memory="" # check
 
 # config_list=("longrope_128k_mistral" "longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500")
 
-config_list=("longrope_128k_pose_512k_static_scale")
+config_list=("longrope_128k_pose_512k_static_scale-new-scale-128")
 # config_list=()
 python_path=$(which python)
 torch_path=$(dirname $python_path)
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
 
-max_tokens_list=(8192 131072 262144)
+max_tokens_list=(524288)
 # max_tokens_list=(1048576)
 for config in "${config_list[@]}"; do
 

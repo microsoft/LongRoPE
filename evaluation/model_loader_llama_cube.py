@@ -125,6 +125,7 @@ def load_model_ppl(model, config, args):
             scale=scaling_factor,
             # max_position_embeddings=args.max_position_embeddings,
             original_max_position_embeddings=args.original_max_position_embeddings, 
+            dtype=torch_dtype,
         ) 
                 
     return model

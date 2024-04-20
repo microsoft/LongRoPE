@@ -69,6 +69,11 @@ def load_model(model, config, args):
                 
     return model, config
 
+try:
+    import torch
+except:
+    raise ImportError("Please install torch first")
+
 def load_model_ppl(model, config, args):
 
     print("config", args.model[0])

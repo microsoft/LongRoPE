@@ -22,7 +22,7 @@ echo "prompt_name: $prompt_name"
 # mistral_256k="${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-${ck_step}"
 # mistral_256k="${path_team}/ft_out_model/longrope-256k-sft-mis/mis-256k-longalphaca-12k/ck-${ck_step}"
 
-mistral_128k=${path_team}/sft-mistral/run-mistral7b_128k_1m-bf16-2node-8gpu-bsz64-step1000-rerun/0/ck-${ck_step}
+mistral_128k=${path_team}/sft-mistral/run-mistral7b_128k_1m-bf16-2node-8gpu-bsz64-step1000/0/ck-${ck_step}
 
 # mistral_256k=${path_team}/sft-mistral/run-mistral7b_256k_1m-bf16-2node-8gpu-bsz64-step1000-rerun/0/ck-${ck_step}
 
@@ -43,6 +43,7 @@ setting["longrope_128k"]="-m ${mistral_128k} --method longrope --finetuned --fac
 # list_2m="1024000,1048000,1550000,1850000"
 # list_2m="1000000,900000,800000,700000,600000,500000,400000,300000,200000,"
 list_2m="700000,800000"
+list_2m="4000,8000,16000,64000,128000,200000,400000,500000,700000,800000"
 
 
 

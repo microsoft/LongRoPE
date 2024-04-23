@@ -3,24 +3,40 @@ import time
 import subprocess  
   
 from pathlib import Path 
- 
+import re
+import argparse
 
 # 设置checkpoint目录和合并脚本的路径  
-proj_dir = "/mnt/yiran/cube-new/cube-test"
+# proj_dir = "/mnt/yiran/cube-new/LongRoPE/cube-new/cube-test"
+# storage = "https://fastnn.blob.core.windows.net/teamdrive/ExtendSeqLen/ft_out_model/cube-la2-4k-128k-same-doc/test"
+# key = "?sv=2023-01-03&st=2024-04-22T12%3A15%3A28Z&se=2024-04-25T12%3A15%3A00Z&sr=c&sp=racwdl&sig=lQc6Vz%2BpSby%2BbHMe%2B64MLO1hXEKiroRXAio7DhvIvSE%3D"  
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--proj-dir', type=str, required=True)
+parser.add_argument('--sh-path', type=str, required=True)
+parser.add_argument('--storage', type=str, required=True)
+parser.add_argument('--key', type=str, required=True)
+args = parser.parse_args()
+
+proj_dir = args.proj_dir
+storage = args.storage
+key = args.key
+sh_path = args.sh_path
+
+print(f"proj_dir={proj_dir}, \nsh_path={sh_path} \nkey={key}, \nstorage={storage}, ")
 checkpoint_dir = proj_dir + "/checkpoint"  
-sh_path = proj_dir + "/run.sh"  
+ 
 
-# merge_script = os.path.join(checkpoint_dir, "merge.sh")  
+checkpoint_list = []
+checkpoint_step_pattern = r"checkpoint_(.+)-shard0.pt"
 
-checkpoint_list = ["1_100", "1_200", "1_300", "1_400", "1_500", "1_600", "1_700", "1_800", "1_900", "1_1000"]
+# checkpoint_list = ["1_100", "1_200", "1_300", "1_400", "1_500", "1_600", "1_700", "1_800", "1_900", "1_1000"]
 
 # 设置监视的间隔时间（单位秒）  
 interval = int(3600*0.5)  # 每小时检查一次  
 pt_split = 4
 
-# 调用函数  
-storage = "https://fastnn.blob.core.windows.net/teamdrive/ExtendSeqLen/ft_out_model/cube-la2-4k-128k-same-doc/test"
-key = "?sv=2023-01-03&st=2024-04-22T12%3A15%3A28Z&se=2024-04-25T12%3A15%3A00Z&sr=c&sp=racwdl&sig=lQc6Vz%2BpSby%2BbHMe%2B64MLO1hXEKiroRXAio7DhvIvSE%3D"  
+
 
 
 
@@ -48,7 +64,6 @@ def merge_checkpoints(checkpoint_step, checkpoint_dir, sh_path, storage, key):
     print(extract_command)
     subprocess.run(extract_command, shell=True, check=True)  
 
-    # exit(0)
     # 移动模型文件  
       
     ck_dir.mkdir(exist_ok=True)  
@@ -75,6 +90,17 @@ def merge_checkpoints(checkpoint_step, checkpoint_dir, sh_path, storage, key):
 
 # 开始监视循环  
 while True:  
+    
+    for filename in os.listdir(checkpoint_dir):
+        print(filename)
+        match  = re.match(checkpoint_step_pattern, filename)
+        if match:
+            ck_step = match.group(1)
+            print(ck_step)
+            checkpoint_list.append(ck_step)
+    checkpoint_list.sort()
+    print(checkpoint_list)
+    # exit(0)
     # 检查每个checkpoint文件  
     for checkpoint_step in checkpoint_list:  # 假设步长为100，总步数为1000 
         correct_pt = 0

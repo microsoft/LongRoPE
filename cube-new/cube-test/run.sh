@@ -20,7 +20,13 @@ then
 
     echo "##run mergeckpt ok"
     # $CUBE_ENV python -c "from fairseq.cube.cube_trainer import CubeTrainer; CubeTrainer.merge_checkpoints('$CKPTPATH', $ZERO_GROUP_SIZE)"
-    touch checkpoint_1_200-full.pt
+
+    path=$(dirname $CKPTPATH)
+    ck_step=${CKPTPATH##*/checkpoint_}
+    ck_step=${ck_step%-shard0.pt}
+    echo "###ck_step $ck_step"
+    touch $path/checkpoint_${ck_step}-full.pt
+
     # replace the "-shard0.pt" suffix with "-full.pt" in CKPTPATH
     MERGED_CKPTPATH=${CKPTPATH/-shard0.pt/-full.pt}
     echo "Created the merged checkpoint file $MERGED_CKPTPATH, please place it in blob and specify this file in the run command to resume."
@@ -32,6 +38,7 @@ then
         exit 1
     fi
     echo "##run extract_hf ok"
+
     path=$(dirname $CKPTPATH)
     touch $path/pytorch_model.bin
     # python $EXAMPLE_PATH/src/ckpt_utils.py $CKPTPATH

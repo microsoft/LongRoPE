@@ -46,11 +46,12 @@ if [ -n "$7" ]; then
         fi
         CONDA_BASE_ENV=$9
         echo "use conda"
+
         # init conda env
-        echo "Will create conda env ${envname} based on $CONDA_BASE_ENV"
-        conda create -y --name "${envname}" --clone "$CONDA_BASE_ENV"
-        echo "Successfully created conda env $envname based on $CONDA_BASE_ENV ..."
-        source activate "${envname}"
+        # echo "Will create conda env ${envname} based on $CONDA_BASE_ENV"
+        # conda create -y --name "${envname}" --clone "$CONDA_BASE_ENV"
+        # echo "Successfully created conda env $envname based on $CONDA_BASE_ENV ..."
+        # source activate "${envname}"
     elif [ "$ENV_OPTION" == "venv" ]; then
         if [ -d "${INSTALL_DIR}/${envname}" ]; then
             echo "${INSTALL_DIR}/${envname} already exists, remove it and try again"
@@ -68,7 +69,7 @@ if [ -n "$7" ]; then
 fi
 
 
-pip install git+https://github.com/shumingma/infinibatch.git \
+python -m pip install git+https://github.com/shumingma/infinibatch.git \
     iopath \
     boto3 \
     dill \

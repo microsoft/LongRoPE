@@ -2,7 +2,7 @@
 ck=$1
 
 # check ck in ("1_100" "2_200" "2_300" "3_400" "3_500" "4_600" "4_700" "5_800")
-sh_path=/home/aisilicon/yiran/Fairseq-mis/cube_examples/llama_128k/run_llama7b_4xA100_1node_16k_mistral_256k_bf16_step500.sh
+sh_path=/mnt/yiran/cube-new-cz/cube-la2-4k-128k/run-la2-4k-pose-128k-batch8.sh
 
 key="?sv=2023-01-03&st=2024-03-24T01%3A09%3A31Z&se=2024-03-25T01%3A09%3A31Z&sr=c&sp=racwdl&sig=Rjoy%2FfxstvpJES46M%2B3NO31RaWyhS%2B7ZteJKV0hIW74%3D"
 

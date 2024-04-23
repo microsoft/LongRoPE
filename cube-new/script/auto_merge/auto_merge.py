@@ -36,14 +36,8 @@ checkpoint_step_pattern = r"checkpoint_(.+)-shard0.pt"
 interval = int(3600*0.5)  # 每小时检查一次  
 pt_split = 4
 
-
-
-
-
-# 监视的checkpoint文件模式  
+# checkpoint文件模式  
 checkpoint_pattern = "checkpoint_{}-shard{}.pt"  
-
-
 
 def merge_checkpoints(checkpoint_step, checkpoint_dir, sh_path, storage, key):  
     ck = checkpoint_step

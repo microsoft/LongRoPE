@@ -195,7 +195,7 @@ class WrappedHFDataset(FairseqDataset):
                 train_dataset = dataset
                 print("Colums: ", train_dataset.column_names)
                 origin_data_len = len(train_dataset['train'][0]['input_ids'])
-                print("origin_data_len, should 128k:", origin_data_len)
+                print("origin_data_len", origin_data_len)
                 print("max_seq_len", max_seq_len)
                 
                 def extend_len(sample, max_seq_len, column_names):

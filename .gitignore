@@ -4,3 +4,5 @@ mlruns
 build
 dist
 tmp*
+cube-new/script/*.log
+

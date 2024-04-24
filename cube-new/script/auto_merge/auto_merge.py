@@ -34,7 +34,7 @@ checkpoint_step_pattern = r"checkpoint_(.+)-shard0.pt"
 
 # 设置监视的间隔时间（单位秒）  
 interval = int(3600*0.5)  # 每小时检查一次  
-pt_split = 4
+pt_split = 8
 
 
 

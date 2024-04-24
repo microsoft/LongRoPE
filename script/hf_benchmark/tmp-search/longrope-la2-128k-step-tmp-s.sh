@@ -1,9 +1,12 @@
 #!/bin/bash
 
 # run job
-# ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
+# ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 ARC 1_100
 
-# ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 ARC 1.0 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 HELLASWAG 1.0 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 MMLU 1.0 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 TRUTHFULQA 1.0 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 ARC 1.06 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 HELLASWAG 1.06 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 MMLU 1.06 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 TRUTHFULQA 1.06 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 ARC 1.07 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 HELLASWAG 1.07 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 MMLU 1.07 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 TRUTHFULQA 1.07 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 ARC 1.08 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 HELLASWAG 1.08 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 MMLU 1.08 ; ./script/hf_benchmark/longrope-la2-128k-step-tmp.sh 1 TRUTHFULQA 1.08 ; 
+# la2-128k: 1.06-1.08
+# ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 ARC 1.0 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 HELLASWAG 1.0 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 MMLU 1.0 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 TRUTHFULQA 1.0 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 ARC 1.06 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 HELLASWAG 1.06 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 MMLU 1.06 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 TRUTHFULQA 1.06 ; 
+
+# ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 ARC 1.07 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 HELLASWAG 1.07 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 MMLU 1.07 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 TRUTHFULQA 1.07 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 ARC 1.08 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 HELLASWAG 1.08 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 MMLU 1.08 ; ./script/hf_benchmark/tmp-search/longrope-la2-128k-step-tmp-s.sh 0 TRUTHFULQA 1.08 ; 
 
 # 定义有效的 job_name 选项和 CUDA_VISIBLE_DEVICES 范围  
 VALID_JOB_NAMES=("ARC" "HELLASWAG" "MMLU" "TRUTHFULQA")  
@@ -88,10 +91,11 @@ MODEL_PATH="/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400/"
 METHOD="longrope"
 MARK="bs2_la2_128k_tmps${tmps}"
 FACTOR=32
-SPI_PARA="./script/hf_benchmark/low_scale/low_scale_la2_128k_4k.csv"
+SPI_PARA="./script/hf_benchmark/tmp-search/low_scale/low_scale_la2_128k_4k.csv"
 
-MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=true,tmps=${tmps},max_position_embeddings=10,original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4096"
-OUTPUT_PATH="./script/hf_benchmark/tmp-search"
+MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=true,tmps=${tmps},longrope_para=${SPI_PARA},original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4096"
+
+OUTPUT_PATH="./script/hf_benchmark/tmp-search/tmp-search"
 
 
 echo "################################"

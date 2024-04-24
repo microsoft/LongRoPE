@@ -26,7 +26,7 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         self.original_max_position_embeddings = original_max_position_embeddings
         
         self.tmps = tmps
-        
+        print("$4 self.tmps", self.tmps)
         inv_freq = 1.0 / (self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim))
         self.register_buffer("inv_freq", inv_freq)
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=4
 
 # path_dir=/your/path/to/store/model/or/dataset
 # your path to model
@@ -37,7 +37,7 @@ echo "dataset BOOKS3 20sample"
 # max_tokens_list=(8192 32768 65536 98304 131072 262144 524288 1048576)
 # max_tokens_list=(8192 32768 65536 98304 131072 262144) # check
 max_tokens_list=(8192) # check
-tmps_list=(1.06 1.07 1.08)
+tmps_list=(1.07)
 
 for tmps in "${tmps_list[@]}"; do
     max_tokens=8192

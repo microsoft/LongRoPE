@@ -3,8 +3,7 @@
 # run job
 # ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
 
-# ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.13 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.13 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.13 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.13 ; 
-
+# ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 ARC 1.0; ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 HELLASWAG 1.0; ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 MMLU 1.0; ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 TRUTHFULQA 1.0;
 
 # 定义有效的 job_name 选项和 CUDA_VISIBLE_DEVICES 范围  
 VALID_JOB_NAMES=("ARC" "HELLASWAG" "MMLU" "TRUTHFULQA")  
@@ -84,14 +83,15 @@ BASE_PATH=$path_dir
 # MODEL_PATH="/ft_out_model/cube-16k-mistral-128k/ck-400"
 
 # model config
-MODEL_PATH="/ft_out_model/cube_256k_from_128k/ck-600/"
+# MODEL_PATH="/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400/"
+MODEL_PATH="/Llama-2-7b-hf/"
 
-METHOD="longrope"
-MARK="bs2_la2_256k_tmps${tmps}"
-FACTOR=64
-# SPI_PARA="./evolution/search_result/final-dim_mono-4100-it-4_1_2.csv"
+METHOD="pi"
+MARK="bs2_la2_4k_tmps${tmps}"
+FACTOR=1
+SPI_PARA="./script/hf_benchmark/low_scale/low_scale_la2_128k_4k.csv"
 
-MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=true,tmps=${tmps},original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4100"
+MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=flase,tmps=${tmps},max_position_embeddings=2048,original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4100"
 
 OUTPUT_PATH="./script/hf_benchmark/tmp-search"
 

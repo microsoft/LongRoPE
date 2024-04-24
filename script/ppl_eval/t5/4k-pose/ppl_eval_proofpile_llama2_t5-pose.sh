@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=0
 # export HF_DATASETS_CACHE="/path/to/store/model"
 export HF_DATASETS_CACHE="../cache"
 # path_dir=/your/path/to/store/model/or/dataset
@@ -34,9 +34,16 @@ declare -A setting
 # setting["longrope_128k"]="--model ${path_dir}/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400/ --method longrope --finetuned --factor 32.0"
 
 #  longrope 128k pose 4k
-setting["longrope_128k_pose_4k"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k/ck-7_1000/ --method longrope --finetuned --factor 32.0"
+setting["longrope_128k_pose_4k-fliter-step1000"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-2_1000 --method longrope --finetuned --factor 32.0"
+# /mnt/yiran/teamdrive3/ExtendSeqLen/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-2_1000
+
+setting["longrope_128k_pose_4k-fliter-step600"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-1_600 --method longrope --finetuned --factor 32.0"
 
 
+setting["longrope_128k_pose_4k-pad-step1000"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000 --method longrope --finetuned --factor 32.0"
+# /mnt/yiran/teamdrive3/ExtendSeqLen/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000
+
+setting["longrope_128k_pose_4k-pad-step600"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000 --method longrope --finetuned --factor 32.0"
 
 # longrope 256k
 # setting["longrope_256k"]="--model ${path_dir}/ft_out_model/cube_256k_from_128k/ck-600/ --method longrope --finetuned --factor 64.0"
@@ -49,7 +56,7 @@ PROOFPILE_128k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_
 PROOFPILE_256k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 262144 --samples 10 --truncate"
 
 cache_dir="../cache_dir"
-output_dir=./script/ppl_eval/t5
+output_dir=./script/ppl_eval/t5/4k-pose
 
 # save_memory="\
 # --aggressive_mem_causal_lm \
@@ -60,7 +67,12 @@ save_memory="--aggressive_mem_causal_lm" # check
 # config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 # config_list=("base" "together" "longlora" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 
-config_list=("longrope_128k_pose_4k") # check
+config_list=( \
+    # "longrope_128k_pose_4k-fliter-step1000" \
+    "longrope_128k_pose_4k-fliter-step600" \
+    # "longrope_128k_pose_4k-pad-step1000" \
+    # "longrope_128k_pose_4k-pad-step600" \
+    ) # check
 
 echo "dataset PROOFPILE 10sample"
 max_tokens_list=(4096 8192 32768 65536 98304 131072)

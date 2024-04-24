@@ -21,6 +21,7 @@ setting["longrope_128k_pose_4k"]="--model ${path_dir}/ft_out_model/cube-la2-4k-1
 
 tokens_list=(16384 65536 102400 131072 163840 262144)
 # method_list=(pi_ft dy_ntk_ft yarn_ft dy_yarn_ft s_pi_ft dy_s_pi_ft)
+tokens_list=(32768 204800)
 method_list=(longrope_128k)
 for method in "${method_list[@]}"; do
     for len_tokens in "${tokens_list[@]}"; do

@@ -19,7 +19,9 @@ setting["s_pi_mis_ft"]="--model ${path_dir}/ft_mis_256k/ --finetuned --method s_
 setting["longrope_128k_pose_4k"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k/ck-7_1000/ --method longrope --finetuned --factor 32.0"
 
 
-tokens_list=(16384 65536 102400 131072 163840 262144)
+# tokens_list=(16384 65536 102400 131072 163840 262144)
+# tokens_list=(16384 65536 102400 131072 163840 262144)
+tokens_list=(32768 204800)
 # method_list=(pi_ft dy_ntk_ft yarn_ft dy_yarn_ft s_pi_ft dy_s_pi_ft)
 method_list=(longrope_128k_pose_4k)
 for method in "${method_list[@]}"; do

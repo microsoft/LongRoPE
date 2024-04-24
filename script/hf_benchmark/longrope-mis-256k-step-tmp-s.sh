@@ -3,7 +3,10 @@
 # run job
 # ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
 
-# ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.0 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.11 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.12 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 ARC 1.13 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 HELLASWAG 1.13 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 MMLU 1.13 ; ./script/hf_benchmark/longrope-la2-256k-step-tmp.sh 2 TRUTHFULQA 1.13 ; 
+# ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 4 ARC 1.0 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 4 HELLASWAG 1.0 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 4 MMLU 1.0 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 4 TRUTHFULQA 1.0 ; 
+# ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 5 ARC 1.06 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 5 HELLASWAG 1.06 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 5 MMLU 1.06 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 5 TRUTHFULQA 1.06 ;
+# ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 6 ARC 1.07 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 6 HELLASWAG 1.07 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 6 MMLU 1.07 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 6 TRUTHFULQA 1.07 ;
+# ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 7 ARC 1.05 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 7 HELLASWAG 1.05 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 7 MMLU 1.05 ; ./script/hf_benchmark/longrope-mis-256k-step-tmp-s.sh 7 TRUTHFULQA 1.05 ; 
 
 
 # 定义有效的 job_name 选项和 CUDA_VISIBLE_DEVICES 范围  
@@ -84,10 +87,12 @@ BASE_PATH=$path_dir
 # MODEL_PATH="/ft_out_model/cube-16k-mistral-128k/ck-400"
 
 # model config
-MODEL_PATH="/ft_out_model/cube_256k_from_128k/ck-600/"
+# MODEL_PATH="/ft_out_model/cube_256k_from_128k/ck-600/"
+MODEL_PATH="/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500"
+# setting["longrope_mistral_256k_bf16_from_step500"]="--model ${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500 --method longrope --finetuned --factor 64 --sliding_window_attention 262144 --original_max_position_embeddings 4096"
 
 METHOD="longrope"
-MARK="bs2_la2_256k_tmps${tmps}"
+MARK="bs2_mis_256k_tmps${tmps}"
 FACTOR=64
 # SPI_PARA="./evolution/search_result/final-dim_mono-4100-it-4_1_2.csv"
 

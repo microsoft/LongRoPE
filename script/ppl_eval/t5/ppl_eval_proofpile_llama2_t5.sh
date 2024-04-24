@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=2
+export CUDA_VISIBLE_DEVICES=5
 # export HF_DATASETS_CACHE="/path/to/store/model"
 export HF_DATASETS_CACHE="../cache"
 # path_dir=/your/path/to/store/model/or/dataset
@@ -44,7 +44,7 @@ PROOFPILE_128k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_
 PROOFPILE_256k="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 262144 --samples 10 --truncate"
 
 cache_dir="../cache_dir"
-output_dir=./evaluation/result
+output_dir=./script/ppl_eval/t5
 
 # save_memory="\
 # --aggressive_mem_causal_lm \
@@ -52,52 +52,17 @@ output_dir=./evaluation/result
 # --aggressive_mem_attn"
 save_memory="--aggressive_mem_causal_lm" # check
 
-config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
+# config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 # config_list=("base" "together" "longlora" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 
-config_list=("codellama") # check
+config_list=("longrope_128k") # check
 
 echo "dataset PROOFPILE 10sample"
-max_tokens_list=(4096 8192 32768 65536 98304 131072)
+# max_tokens_list=(4096 8192 32768 65536 98304 131072)
+max_tokens_list=(4096 131072)
+
 # max_tokens_list=(4096)
 
-# for config in "${config_list[@]}"; do
-#     for max_tokens in "${max_tokens_list[@]}"; do
-#         echo "####### $config, max-tokens=$max_tokens #############"
-#         python evaluation/perplexity.py \
-#             ${PROOFPILE_128k}\
-#             ${setting[$config]} \
-#             --max_tokens $max_tokens \
-#             --min_tokens $max_tokens \
-#             --tokens_step 2048 \
-#             --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
-#             --original_max_position_embeddings 4096 \
-#             --flash_attn \
-#             ${save_memory} \
-#             --cache_dir $cache_dir
-#     done
-# done
-
-# max_tokens_list=(262144)
-# for config in "${config_list[@]}"; do
-#     for max_tokens in "${max_tokens_list[@]}"; do
-#         echo "####### $config, max-tokens=$max_tokens #############"
-#         python evaluation/perplexity.py \
-#             ${PROOFPILE_256k}\
-#             ${setting[$config]} \
-#             --max_tokens $max_tokens \
-#             --min_tokens $max_tokens \
-#             --tokens_step 2048 \
-#             --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
-#             --original_max_position_embeddings 4096 \
-#             --flash_attn \
-#             ${save_memory} \
-#             --cache_dir $cache_dir
-#     done
-# done
-
-config_list=("codellama")
-max_tokens_list=(4096 131072)
 for config in "${config_list[@]}"; do
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"
@@ -107,7 +72,8 @@ for config in "${config_list[@]}"; do
             --max_tokens $max_tokens \
             --min_tokens $max_tokens \
             --tokens_step 2048 \
-            --output_file "${output_dir}/t5_proofpile_8k_${config}_${max_tokens}.csv" \
+            --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
+            --original_max_position_embeddings 4096 \
             --flash_attn \
             ${save_memory} \
             --cache_dir $cache_dir
@@ -124,10 +90,46 @@ for config in "${config_list[@]}"; do
             --max_tokens $max_tokens \
             --min_tokens $max_tokens \
             --tokens_step 2048 \
-            --output_file "${output_dir}/t5_proofpile_8k_${config}_${max_tokens}.csv" \
+            --output_file "${output_dir}/t5_proofpile_${config}_${max_tokens}.csv" \
+            --original_max_position_embeddings 4096 \
             --flash_attn \
             ${save_memory} \
             --cache_dir $cache_dir
     done
 done
+
+# config_list=("codellama")
+# max_tokens_list=(4096 131072)
+# for config in "${config_list[@]}"; do
+#     for max_tokens in "${max_tokens_list[@]}"; do
+#         echo "####### $config, max-tokens=$max_tokens #############"
+#         python evaluation/perplexity.py \
+#             ${PROOFPILE_128k}\
+#             ${setting[$config]} \
+#             --max_tokens $max_tokens \
+#             --min_tokens $max_tokens \
+#             --tokens_step 2048 \
+#             --output_file "${output_dir}/t5_proofpile_8k_${config}_${max_tokens}.csv" \
+#             --flash_attn \
+#             ${save_memory} \
+#             --cache_dir $cache_dir
+#     done
+# done
+
+# max_tokens_list=(262144)
+# for config in "${config_list[@]}"; do
+#     for max_tokens in "${max_tokens_list[@]}"; do
+#         echo "####### $config, max-tokens=$max_tokens #############"
+#         python evaluation/perplexity.py \
+#             ${PROOFPILE_256k}\
+#             ${setting[$config]} \
+#             --max_tokens $max_tokens \
+#             --min_tokens $max_tokens \
+#             --tokens_step 2048 \
+#             --output_file "${output_dir}/t5_proofpile_8k_${config}_${max_tokens}.csv" \
+#             --flash_attn \
+#             ${save_memory} \
+#             --cache_dir $cache_dir
+#     done
+# done
 

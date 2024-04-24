@@ -28,7 +28,7 @@ def compute_perplexity(
     # aggressive_memory=False, 
     use_cache=False
 ):
-    # sliding_window = sliding_window * 16
+
     print("sliding_window", sliding_window)
     r"""Compute "sliding window" perplexity on a dataset. Validated against the calculations reported in arXiv 2306.15595  """
     if device is not None:
@@ -163,10 +163,10 @@ def main(args):
     if args.samples:
         input_texts = input_texts[:min(args.samples, len(input_texts))]
         # input_texts.save_to_disk("./evaluation/dataset/books3/")
-        if min(args.samples, len(input_texts))==0:
-            raise ValueError("Seq too long! No sample")
-        else:
-            print("samples: ", args.samples, len(input_texts))
+        # if min(args.samples, len(input_texts))==0:
+        #     raise ValueError("Seq too long! No sample")
+        # else:
+        # print("samples: ", args.samples, len(input_texts))
     if args.tokens_step:
         tokens = [x for x in range(
             args.min_tokens, args.max_tokens + 1, args.tokens_step)]

@@ -96,7 +96,7 @@ def main(args):
     for model in tqdm(models, desc="Model", leave=False):
         torch.cuda.empty_cache()
 
-        loaded = load_model_and_apply_patches(model, args)
+        loaded, lambda_1 = load_model_and_apply_patches(model, args)
 
         pipe = pipeline("text-generation", model=loaded,
                         tokenizer=tokenizer, pad_token_id=tokenizer.eos_token_id,
@@ -126,7 +126,7 @@ def main(args):
 if __name__ == "__main__":
     warnings.simplefilter("ignore")
     parser = argparse.ArgumentParser()
-    parser.add_argument("-m", "--model", action="append", nargs="+")
+    # parser.add_argument("-m", "--model", action="append", nargs="+")
     parser.add_argument("--fixed-length", type=int)
     parser.add_argument("--max-tokens", type=int, default=8192)
     parser.add_argument("--min-tokens", type=int, default=256)

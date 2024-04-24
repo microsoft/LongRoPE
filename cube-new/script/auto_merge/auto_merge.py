@@ -28,24 +28,37 @@ checkpoint_dir = proj_dir + "/checkpoint"
  
 
 checkpoint_list = []
-checkpoint_step_pattern = r"checkpoint_(.+)-shard0.pt"
+# eg:
+# "checkpoint1-shard0.pt
+# checkpoint_last-shard0.pt
+# checkpoint_1_200-shard0.pt"
+
+# checkpoint_step_pattern = r"checkpoint_(.+)-shard0.pt"
+# checkpoint_step_pattern = r"checkpoint(?:_(.+))?-(shard)(\d+).pt"
+checkpoint_step_pattern = r"checkpoint(?:_(?P<ck_step>.+))?-(?P<shard>shard)(?P<id>\d+).pt"
+
+checkpoint_step_pattern_epoch = r"checkpoint(?P<ck_step>\d+)-shard(?P<id>\d+).pt"
+
 
 # checkpoint_list = ["1_100", "1_200", "1_300", "1_400", "1_500", "1_600", "1_700", "1_800", "1_900", "1_1000"]
 
 # 设置监视的间隔时间（单位秒）  
 interval = int(3600*0.5)  # 每小时检查一次  
-pt_split = 8
+# pt_split = 4
 
-
-
-
-
-# 监视的checkpoint文件模式  
+# checkpoint文件模式  
 checkpoint_pattern = "checkpoint_{}-shard{}.pt"  
+checkpoint_pattern_epoch = "checkpoint{}-shard{}.pt"  
 
 
-
-def merge_checkpoints(checkpoint_step, checkpoint_dir, sh_path, storage, key):  
+def merge_checkpoints(
+    checkpoint_step, 
+    checkpoint_dir, 
+    pt_split, 
+    sh_path, 
+    storage, 
+    key
+    ):  
     ck = checkpoint_step
     print(f"Processing checkpoint: {ck}")  
     
@@ -87,18 +100,81 @@ def merge_checkpoints(checkpoint_step, checkpoint_dir, sh_path, storage, key):
     return True
   
 
+def merge_checkpoints_epoch(
+    checkpoint_step, 
+    checkpoint_dir, 
+    pt_split, 
+    sh_path, 
+    storage, 
+    key
+    ):  
+    ck = checkpoint_step
+    print(f"Processing checkpoint: {ck}")  
+    
+    # 创建目录
+    ck_dir = Path(checkpoint_dir) / f"ck-{ck}"
+    if (ck_dir / "pytorch_model.bin").exists(): 
+        return False
+    
+    # 合并checkpoint片段  
+    merge_command = f"bash {sh_path} mergeckpt {checkpoint_dir}/checkpoint{ck}-shard0.pt"  
+    print(merge_command)
+    subprocess.run(merge_command, shell=True, check=True)  
+
+    # 提取为Hugging Face模型格式  
+    extract_command = f"bash {sh_path} extract_hf {checkpoint_dir}/checkpoint{ck}-full.pt"  
+    print(extract_command)
+    subprocess.run(extract_command, shell=True, check=True)  
+
+    # 移动模型文件  
+      
+    ck_dir.mkdir(exist_ok=True)  
+    pytorch_model_file = Path(checkpoint_dir) / "pytorch_model.bin"  
+    print(f"mv to {ck_dir / pytorch_model_file.name}")
+    pytorch_model_file.rename(ck_dir / pytorch_model_file.name)  
+
+    # 使用azcopy上传到云存储  
+    azcopy_command = f"azcopy cp '{ck_dir.as_posix()}/' '{storage}/{key}' --recursive=true"  
+    print(azcopy_command)
+    subprocess.run(azcopy_command, shell=True, check=True)  
+
+    # 检查模型文件是否存在，如果存在则删除相关checkpoint文件 
+    print("$check", ck_dir / "pytorch_model.bin") 
+    if (ck_dir / "pytorch_model.bin").exists():  
+        for shard_id in range(pt_split):  # 假设有8个shard  
+            shard_file = Path(checkpoint_dir) / f"checkpoint{ck}-shard{shard_id}.pt"  
+            print("rm", shard_file)
+            shard_file.unlink(missing_ok=True)  
+        full_pt_file = Path(checkpoint_dir) / f"checkpoint{ck}-full.pt"  
+        full_pt_file.unlink(missing_ok=True)  
+        
+    return True
+ 
 
 # 开始监视循环  
 while True:  
-    
+    ids = []
     for filename in os.listdir(checkpoint_dir):
         print(filename)
         match  = re.match(checkpoint_step_pattern, filename)
+        mathc_epoch = re.match(checkpoint_step_pattern_epoch, filename)
         if match:
-            ck_step = match.group(1)
-            print(ck_step)
-            checkpoint_list.append(ck_step)
+            ck_step = match.group('ck_step')
+            id = match.group('id')
+            print(ck_step, id)
+            if int(id) == 0:
+                checkpoint_list.append(ck_step)
+            ids.append(int(id))
+        if mathc_epoch:
+            ck_step = mathc_epoch.group('ck_step')
+            id = mathc_epoch.group('id')
+            print(ck_step, id)
+            if int(id) == 0:
+                checkpoint_list.append(ck_step)
+            ids.append(int(id))
+            
     checkpoint_list.sort()
+    pt_split = max(ids) + 1
     print(checkpoint_list)
     # exit(0)
     # 检查每个checkpoint文件  
@@ -106,8 +182,9 @@ while True:
         correct_pt = 0
         for id in range(pt_split): # checkpoint_1_100-shard0.pt - 7.pt
             checkpoint_file = os.path.join(checkpoint_dir, checkpoint_pattern.format(checkpoint_step, id))  
+            checkpoint_file_epoch = os.path.join(checkpoint_dir, checkpoint_pattern_epoch.format(checkpoint_step, id))  
             
-            if not os.path.exists(checkpoint_file):  
+            if (not os.path.exists(checkpoint_file)) and (not os.path.exists(checkpoint_file_epoch)):  
                 print(f"Checkpoint {checkpoint_file} not found. Waiting for next check.")  
                 break  
             else:
@@ -118,7 +195,25 @@ while True:
             print(f"All {checkpoint_step} ck found. Running merge script.")  
 
             # merge 
-            flag = merge_checkpoints(checkpoint_step, checkpoint_dir, sh_path, storage, key)  
+            if checkpoint_step in [str(i) for i in range(100)]:
+                # epoch
+                flag = merge_checkpoints_epoch(
+                    checkpoint_step, 
+                    checkpoint_dir, 
+                    pt_split,
+                    sh_path, 
+                    storage, 
+                    key
+                    )  
+            else:
+                flag = merge_checkpoints(
+                    checkpoint_step, 
+                    checkpoint_dir, 
+                    pt_split,
+                    sh_path, 
+                    storage, 
+                    key
+                    )  
             
             if flag == False:
                 print(f"{checkpoint_step} exits")

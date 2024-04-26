@@ -52,6 +52,7 @@ def main(args):
             model_response = json_data.get("model_response", None).lower()
             needle = json_data.get("needle", None).lower()
             expected_answer = "eat a sandwich and sit in Dolores Park on a sunny day.".lower().split()
+            
             if not "origin" in args.name:
                 score = len(set(model_response.split()).intersection(set(expected_answer))) / len(expected_answer)
             else:

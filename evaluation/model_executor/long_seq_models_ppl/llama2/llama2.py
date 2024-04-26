@@ -32,12 +32,12 @@ def RmsNorm(hidden_states: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6
         output = (weight * hidden_states).to(dtype)
         return output
     else:
-        return rms_norm(hidden_states, weight, eps)
+        # return rms_norm(hidden_states, weight, eps)
+        output = torch.empty_like(hidden_states)
         if hidden_states.shape[1] > 512 * 1024:
             shard_size = 16
         else:
             shard_size = 4
-        output = torch.empty_like(hidden_states)
         shard_len = hidden_states.shape[1] // shard_size + 1
         for start_loc in range(0, hidden_states.shape[1], shard_len):
             end_loc = min(start_loc + shard_len, hidden_states.shape[1])
@@ -170,10 +170,10 @@ def ffn(x: torch.Tensor,
         x = x * y
         return torch.nn.functional.linear(x, down)
     else:
-        return swiglu(x=x, w1=gate, b1=None, w2=up, b2=None, w3=down, b3=None, op=None)
+        # return swiglu(x=x, w1=gate, b1=None, w2=up, b2=None, w3=down, b3=None, op=None)
         # shard
         if x.shape[1] > 512 * 1024:
-            shard_size = 16
+            shard_size = 8
         else:
             shard_size = 4
         shard_len = x.shape[1] // shard_size + 1

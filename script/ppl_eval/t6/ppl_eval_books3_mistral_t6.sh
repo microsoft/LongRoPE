@@ -23,10 +23,10 @@ setting["yarn_64k_mistral"]="--model ${path_dir}/Yarn-Mistral-7b-64k --method ya
 setting["yarn_128k_mistral"]="--model ${path_dir}/Yarn-Mistral-7b-128k --method yarn --finetuned --factor 16.0 --original_max_position_embeddings 8192"
 
 # longrope Mistral 128k
-setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-128k/ck-400 --method longrope --finetuned --factor 32.0 --original_max_position_embeddings 4096"
+setting["longrope_128k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-128k/ck-400 --method longrope --finetuned --factor 32.0 --original_max_position_embeddings 4096 --sliding_window_attention 131072"
 
 # longrope Mistral 256k
-setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original_max_position_embeddings 4096"
+setting["longrope_256k_mistral"]="--model ${path_dir}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original_max_position_embeddings 4096 --sliding_window_attention 262144"
 
 
 
@@ -41,12 +41,14 @@ save_memory="\
 # save_memory="" # check
 
 config_list=("base_mistral" "yarn_64k_mistral" "yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral")
-config_list=("yarn_64k_mistral" "yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral") # check
+# config_list=("yarn_64k_mistral" "yarn_128k_mistral" "longrope_128k_mistral" "longrope_256k_mistral") # check
+config_list=("longrope_128k_mistral")
+
 
 echo "dataset BOOKS3 20sample"
 max_tokens_list=(8192 32768 65536 98304 131072 262144 524288 1048576)
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
-max_tokens_list=(8192 32768 65536 98304 131072 262144)
+max_tokens_list=(8192)
 
 for max_tokens in "${max_tokens_list[@]}"; do
     for config in "${config_list[@]}"; do
@@ -58,7 +60,6 @@ for max_tokens in "${max_tokens_list[@]}"; do
             --min_tokens $max_tokens \
             --tokens_step 2048 \
             --output_file "${output_dir}/t6_books3_${config}_${max_tokens}.csv" \
-            --sliding_window_attention $max_tokens \
             --flash_attn \
             ${save_memory} \
             --cache_dir $cache_dir

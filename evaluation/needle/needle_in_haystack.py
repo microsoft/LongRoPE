@@ -39,7 +39,7 @@ import glob
 import json
 # import tensor_parallel as tp
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
-import cube
+
 import re
 
 try:
@@ -109,6 +109,9 @@ class LLMNeedleHaystackTester:
                  print_ongoing_status = True,
                  args_rope = None,
                  prompt_template="base",
+                 seq_series = None,
+                 file_order_idx=0,
+                 use_books_idx=None,
                  ):
         """        
         :param needle: The needle to be found in the haystack. Default is None.
@@ -138,7 +141,6 @@ class LLMNeedleHaystackTester:
         """
         if not needle or not haystack_dir or not retrieval_question:
             raise ValueError("Needle, haystack, and retrieval_question must be provided.")
-        
         self.needle = needle
         self.haystack_dir = haystack_dir
         self.retrieval_question = retrieval_question
@@ -156,6 +158,10 @@ class LLMNeedleHaystackTester:
         
         self.args_rope = args_rope
         self.prompt_template = prompt_template
+        self.seq_series = seq_series
+        self.file_order_idx = file_order_idx
+        self.use_books_idx = use_books_idx
+        
         if("/" in model_name):
             self.model_version = model_name.split("/")[-1]
         else: self.model_version = model_name
@@ -165,7 +171,13 @@ class LLMNeedleHaystackTester:
             if context_lengths_min is None or context_lengths_max is None or context_lengths_num_intervals is None:
                 raise ValueError("Either context_lengths_min, context_lengths_max, context_lengths_intervals need to be filled out OR the context_lengths_list needs to be supplied.")
             else:
-                self.context_lengths = np.round(np.linspace(context_lengths_min, context_lengths_max, num=context_lengths_num_intervals, endpoint=True)).astype(int)
+                if self.seq_series != None:
+                    seq_str = self.seq_series.split(",")
+                    seq_list = [int(item) for item in seq_str]
+                    self.context_lengths = np.array(seq_list)
+                else:
+                    self.context_lengths = np.round(np.linspace(context_lengths_min, context_lengths_max, num=context_lengths_num_intervals, endpoint=True)).astype(int)
+                print_single(self.context_lengths)
         else:
             self.context_lengths = context_lengths
 
@@ -180,6 +192,8 @@ class LLMNeedleHaystackTester:
         else:
             self.document_depth_percents = document_depth_percents
 
+        print("self.document_depth_percents", self.document_depth_percents)
+        
         if document_depth_percent_interval_type not in [None, "linear", "sigmoid"]:
             raise ValueError("document_depth_percent_interval_type must be either None, 'linear' or 'sigmoid'. If you'd like your own distribution give a list of ints in via document_depth_percent_intervals")
         
@@ -317,61 +331,73 @@ class LLMNeedleHaystackTester:
             for depth_percent in self.document_depth_percents:
                 task = self.bound_evaluate_and_log(context_length, depth_percent)
 
-    def generate_prompt(self, context):
-        # Generate the prompt for the Anthropic model
-        # Replace the following line with the appropriate prompt structure
-        if self.prompt_template == "base":
-            if(self.model_provider not in ["OpenAI", "Anthropic"]):
-                test_format=f"<|im_start|> This is a very long story book: <book> {context} </book>.\n Based on the content of the book, Question: {self.retrieval_question}\nAnswer:"
-                return test_format
-            else: 
-                return [
-                    {
-                        "role": "system",
-                        "content": "You are a helpful AI bot that answers questions for a user. Keep your response short and direct"
-                    },
-                    {
-                        "role": "user",
-                        "content": context
-                        },
-                    {
-                        "role": "user",
-                        "content": f"{self.retrieval_question} Don't give information outside the document or repeat your findings. The document definitely contains the answer, and I'm 100% sure. So try your best to find it."
-                    },
-                    {
-                        "role": "assistant",
-                        "content":"",
-                    },
-                    
-                ]
-        elif self.prompt_template == "SIMPLE_TEMPLATE":
+    
+    def split_template(self, template):  
+        parts = template.split("{question}")  
+        for i in range(1, len(parts)):  
+            parts.insert(i*2-1, "question")  
+        
+        for i, part in enumerate(parts):  
+            if "{context}" in part:  
+                subparts = part.split("{context}")  
+                for j in range(1, len(subparts)):  
+                    subparts.insert(j*2-1, "context")  
+                parts[i:i+1] = subparts  
+        return parts  
+  
+    def generate_prompt(self, context_ids):
+        
+        if self.prompt_template == "SIMPLE_TEMPLATE":
             from prompt import SIMPLE_TEMPLATE
-            test_format = SIMPLE_TEMPLATE.format(question=self.retrieval_question, context=context)
-            return test_format
+            template_list = self.split_template(SIMPLE_TEMPLATE)
+
         elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1":
             from prompt import ANTHROPIC_TEMPLATE_REV1
-            test_format = ANTHROPIC_TEMPLATE_REV1.format(question=self.retrieval_question, context=context)
-            return test_format
+            template_list = self.split_template(ANTHROPIC_TEMPLATE_REV1)
+
         elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV2":
             from prompt import ANTHROPIC_TEMPLATE_REV2
-            test_format = ANTHROPIC_TEMPLATE_REV2.format(question=self.retrieval_question, context=context)
-            return test_format
+            template_list = self.split_template(ANTHROPIC_TEMPLATE_REV2)
+
         elif self.prompt_template == "ANTHROPIC_TEMPLATE_ORIGINAL":
             from prompt import ANTHROPIC_TEMPLATE_ORIGINAL
-            test_format = ANTHROPIC_TEMPLATE_ORIGINAL.format(question=self.retrieval_question, context=context)
-            return test_format
+            template_list = self.split_template(ANTHROPIC_TEMPLATE_ORIGINAL)
+
         elif self.prompt_template == "GEMINI_TEMPLATE":
             from prompt import GEMINI_TEMPLATE
-            test_format = GEMINI_TEMPLATE.format(question=self.retrieval_question, context=context)
-            return test_format
+            template_list = self.split_template(GEMINI_TEMPLATE)
+
         elif self.prompt_template == "GEMINI_TEMPLATE2":
             from prompt import GEMINI_TEMPLATE2
-            test_format = GEMINI_TEMPLATE2.format(question=self.retrieval_question, context=context)
-            return test_format
-        elif self.prompt_template == "ANTHROPIC_TEMPLATE_REV1_ED":
-            from prompt import ANTHROPIC_TEMPLATE_REV1_ED
-            test_format = ANTHROPIC_TEMPLATE_REV1_ED.format(question=self.retrieval_question, context=context)
-            return test_format
+            template_list = self.split_template(GEMINI_TEMPLATE2)
+
+        else:
+            raise ("prompt_template not support")
+
+        
+        # template_list = 
+        question_ids = self.enc.encode(self.retrieval_question, return_tensors="pt", add_special_tokens=False)
+        # 初始化一个空的张量列表，用于存储所有编码后的部分  
+        encoded_parts = []  
+        
+        # 遍历模板列表，编码文本部分，并插入question_ids和context_ids  
+        for part in template_list:  
+            if part == 'question':  
+                # 直接添加question的token ids  
+                encoded_parts.append(question_ids)  
+            elif part == 'context':  
+                # 直接添加context的token ids  
+                encoded_parts.append(context_ids)  
+            else:  
+                # 对模板的文本部分进行编码  
+                part_ids = self.enc.encode(part, return_tensors="pt", add_special_tokens=False)  
+                encoded_parts.append(part_ids)  
+        
+        # 使用torch.cat沿着第二维连接所有编码后的部分  
+        input_ids_tensor = torch.cat(encoded_parts, dim=1)  
+        
+        # 返回合并后的input_ids_tensor  
+        return input_ids_tensor  
     
     def evaluate_and_log(self, context_length, depth_percent):
         # Checks to see if you've already checked a length/percent/version.
@@ -385,39 +411,41 @@ class LLMNeedleHaystackTester:
                 
         print_single("begin generate_context")
         # Go generate the required length context and place your needle statement in
-        context = self.generate_context(context_length, depth_percent)
+        context_ids = self.generate_context(context_length, depth_percent)
 
         print_single("begin generate_prompt")
-        # Prepare your message to send to the model you're going to evaluate
-        prompt = self.generate_prompt(context)
         
-        print_single("$rm bos")
-        prompt = prompt.replace("<s>", "")
-        print_single(prompt)
+        # Prepare your message to send to the model you're going to evaluate
+        
+        
+        # from prompt import ANTHROPIC_TEMPLATE_ORIGINAL_LIST
+        # template_list = ANTHROPIC_TEMPLATE_ORIGINAL_LIST
+        
+        # template_list
+        prompt_ids = self.generate_prompt(context_ids)
+        
         
         test_start_time = time.time()
         if(self.model_provider in ["OpenAI", "Anthropic"]):
             # import ipdb; ipdb.set_trace()
             response = self.model_to_test.chat.completions.create(
                 model=self.model_name,
-                messages=prompt,
+                messages=self.enc.decode(prompt_ids),
                 max_tokens=300,
                 temperature=0
             )
             response = response.choices[0].message.content
         else:
-            print_single("begin tokenizer")
-            # print_single("prompt[:, -100:]", prompt[-100:])
-            prompt = self.enc(prompt, return_tensors="pt")
-            print_single("end tokenizer")
-            
-            input_ids = prompt['input_ids'].to(torch.cuda.current_device())
+
+            input_ids = prompt_ids.to(torch.cuda.current_device())
             if input_ids[0, -1] == self.enc.eos_token_id:
                 input_ids = input_ids[:, :-1]
             
-            print_single("input_ids[:, -5:]", input_ids[:, -5:])
+            # print_single("input_ids[:, -5:]", input_ids[:, -5:])
             
             print_single("begin generate, context_length", context_length)
+            if context_length < 2000:
+                print(self.enc.decode(input_ids.cpu().squeeze().tolist(), skip_special_tokens=True))
             
             # test ppl
             with torch.no_grad():
@@ -484,8 +512,17 @@ class LLMNeedleHaystackTester:
 
                     # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
                     #     f.write(context)
-                    with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
-                        f.write(context)  
+                    # 假设 context_ids 是一个包含token IDs的Tensor  
+                    # 将Tensor转换为列表  
+                    context_ids_list = context_ids.tolist()  
+                    
+                    # 将列表转换为字符串，假设token IDs之间用空格分隔  
+                    context_ids_str = ' '.join(map(str, context_ids_list))  
+                    
+                    # 将字符串写入文件  
+                    with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:    
+                        f.write(context_ids_str)  
+ 
             else:
                 results['file_name'] : context_file_location
 
@@ -498,8 +535,10 @@ class LLMNeedleHaystackTester:
 
                 # with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w') as f:
                 #     f.write(context)
+                context_ids_str = ' '.join(map(str, context_ids_list))  
+                    
                 with open(f'contexts/{self.model_version}/{context_file_location}_context.txt', 'w', encoding='utf-8') as f:  
-                    f.write(context)  
+                    f.write(context_ids_str)  
             
         if self.save_results:
             # Save the context to file for retesting
@@ -551,113 +590,133 @@ class LLMNeedleHaystackTester:
                     if context_length_met and depth_percent_met and version_met and model_met:
                         return True
         return False
-
+    
     def generate_context(self, context_length, depth_percent):
         # Load up tiktoken so we navigate tokens more easily
 
         # Get your Paul Graham files loaded into a string
-        context = self.read_context_files()
+        if self.use_books_idx != None:
+            context_ids = self.load_books()
+        else:
+            context_ids = self.read_context_files()
 
         # Truncate the Paul Graham essays to the context length you desire
-        context = self.encode_and_trim(context, context_length)
-
+        # context = self.encode_and_trim(context, context_length)
+        context_ids = context_ids [:, :context_length - 300] 
+        # prompt token len: 300
+        
+        print("context_ids.shape", context_ids.shape)
+        
         # Insert your random statement according to your depth percent
-        context = self.insert_needle(context, depth_percent, context_length)
+        context_ids = self.insert_needle(context_ids, depth_percent, context_length)
 
-        return context
-    
-    def encode_text_to_tokens(self, text):
-        if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
-            return self.enc.encode(text)
-        elif self.model_provider == "Anthropic":
-            # Assuming you have a different encoder for Anthropic
-            return self.enc.encode(text).ids
-        else:
-            raise ValueError("model_provider must be either 'OpenAI' or 'Anthropic'")
-    
-    def insert_needle(self, context, depth_percent, context_length):
-        tokens_needle = self.encode_text_to_tokens(self.needle)
-        tokens_context = self.encode_text_to_tokens(context)
+        return context_ids
 
-        print_single("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
-        if tokens_needle[-1] == self.enc.eos_token_id:
-            tokens_needle = tokens_needle[:-1]
-        print_single("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:5], tokens_needle[:-5])
+    def insert_needle(self, context_ids, depth_percent, context_length):
+        # tokens_needle = self.encode_text_to_tokens(self.needle)
+        # tokens_context = self.encode_text_to_tokens(context)
+        tokens_context = context_ids
+        tokens_needle = self.enc.encode(self.needle, return_tensors="pt", add_special_tokens=False)
+        print_single("$before tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:, :5], tokens_needle[:, :-5])
+        if tokens_needle[0, -1] == self.enc.eos_token_id:
+            tokens_needle = tokens_needle[:, :-1]
+        print_single("$after tokens_needle[:5], tokens_needle[:-5]", tokens_needle[:, :5], tokens_needle[:, :-5])
         
         # Reducing the context length by 150 buffer. This is to account for system message, the user question, and response.
         context_length -= self.final_context_length_buffer
 
         # If your context + needle are longer than the context length (which it will be), then reduce tokens from the context by the needle length
         if len(tokens_context) + len(tokens_needle) > context_length:
-            tokens_context = tokens_context[:context_length - len(tokens_needle)]
+            tokens_context = tokens_context[:, :(context_length - len(tokens_needle))]
 
         if depth_percent == 100:
             # If your depth percent is 100 (which means your needle is the last thing in the doc), throw it at the end
-            tokens_new_context = tokens_context + tokens_needle
+            tokens_new_context = torch.cat((tokens_context, tokens_needle), dim=1)
         else:
             # Go get the position (in terms of tokens) to insert your needle
             insertion_point = int(len(tokens_context) * (depth_percent / 100))
             # import ipdb; ipdb.set_trace()
 
+            # print("$$1 tokens_context", tokens_context.shape, tokens_context)
+            # tokens_context [1, 1024]
             # tokens_new_context represents the tokens before the needle
-            tokens_new_context = tokens_context[:insertion_point]
-
+            tokens_new_context = tokens_context[:, :insertion_point]
+            # tokens_new_context [1, 0]
+            # print("$$2 tokens_new_context", tokens_new_context.shape, tokens_new_context)
             # We want to make sure that we place our needle at a sentence break so we first see what token a '.' is
-            if(self.model_provider in ["LLaMA", "LongLLaMA"]): period_tokens = [29889, 869]
-            elif(self.model_provider == "Mistral"): period_tokens = [842, 28723]
-            elif(self.model_provider == "GLM"): period_tokens = [918, 30930]
-            else: period_tokens = self.encode_text_to_tokens('.')
+            if(self.model_provider in ["LLaMA", "LongLLaMA"]): 
+                period_tokens = [29889, 869]
+            elif(self.model_provider == "Mistral"): 
+                period_tokens = [842, 28723]
+            elif(self.model_provider == "GLM"): 
+                period_tokens = [918, 30930]
+            else: 
+                period_tokens = self.enc.encode('.', return_tensors="pt", add_special_tokens=False)
             
+            # print("$$3 tokens_new_context", tokens_new_context.shape, tokens_new_context)
             # Then we iteration backwards until we find the first period
-            while tokens_new_context and tokens_new_context[-1] not in period_tokens:
+            while (tokens_new_context.shape[1] != 0) and (tokens_new_context[-1] not in period_tokens):
                 insertion_point -= 1
-                tokens_new_context = tokens_context[:insertion_point]
+                tokens_new_context = tokens_context[:, :insertion_point]
 
             print_single("insertion at %d" % insertion_point)
             # Once we get there, then add in your needle, and stick the rest of your context in on the other end.
             # Now we have a needle in a haystack
-            tokens_new_context += tokens_needle + tokens_context[insertion_point:]
+            
+            # print("tokens_new_context.shape", tokens_new_context.shape,
+            #       "tokens_needle", tokens_needle.shape,
+            #       tokens_context[:, insertion_point:].shape,
+            # )
+            assert tokens_new_context.size(0) == tokens_needle.size(0) == tokens_context.size(0) == 1  
+            tokens_new_context = torch.cat(
+                [tokens_new_context, 
+                 tokens_needle, 
+                 tokens_context[:, insertion_point:]
+                 ], dim=1)
+
 
         # Convert back to a string and return it
-        new_context = self.decode_tokens(tokens_new_context)
-        return new_context
-
-    def get_context_length_in_tokens(self, context):
-        if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
-            return len(self.enc.encode(context))
-        elif self.model_provider == "Anthropic":
-            # Assuming you have a different encoder for Anthropic
-            encoded = self.enc.encode(context)
-            return len(self.enc.encode(context).ids)
-        else:
-            
-            raise ValueError("model_provider must be either 'OpenAI' or 'Anthropic'")
+        # new_context = self.decode_tokens(tokens_new_context)
+        return tokens_new_context
 
     def read_context_files(self):
-        context = ""
-        max_context_length = max(self.context_lengths)
+          
+        # from prompt import file_list_pt
         
-        try_read_context_files = 0
-        while self.get_context_length_in_tokens(context) < max_context_length:
-            try_read_context_files += 1
-            print_single("try_read_context_files", try_read_context_files)
-            print_single("curr len:", self.get_context_length_in_tokens(context))
+        try:  
+            with open('evaluation/needle/file_list_dict.json', 'r') as json_file:  
+                file_list_dict = json.load(json_file)  
+        except FileNotFoundError:  
+            raise("File not found: file_list_dict.json")  
+        except json.JSONDecodeError:  
+            raise("File is not in a valid JSON format")
             
-            file_list = ['./evaluation/needle/PaulGrahamEssays/apple.txt', './evaluation/needle/PaulGrahamEssays/submarine.txt', './evaluation/needle/PaulGrahamEssays/addiction.txt', './evaluation/needle/PaulGrahamEssays/gap.txt', './evaluation/needle/PaulGrahamEssays/bias.txt', './evaluation/needle/PaulGrahamEssays/useful.txt', './evaluation/needle/PaulGrahamEssays/popular.txt', './evaluation/needle/PaulGrahamEssays/vcsqueeze.txt', './evaluation/needle/PaulGrahamEssays/gba.txt', './evaluation/needle/PaulGrahamEssays/island.txt', './evaluation/needle/PaulGrahamEssays/before.txt', './evaluation/needle/PaulGrahamEssays/todo.txt', './evaluation/needle/PaulGrahamEssays/vb.txt', './evaluation/needle/PaulGrahamEssays/founders.txt', './evaluation/needle/PaulGrahamEssays/unions.txt', './evaluation/needle/PaulGrahamEssays/diff.txt', './evaluation/needle/PaulGrahamEssays/vw.txt', './evaluation/needle/PaulGrahamEssays/corpdev.txt', './evaluation/needle/PaulGrahamEssays/wisdom.txt', './evaluation/needle/PaulGrahamEssays/love.txt', './evaluation/needle/PaulGrahamEssays/sun.txt', './evaluation/needle/PaulGrahamEssays/langdes.txt', './evaluation/needle/PaulGrahamEssays/pow.txt', './evaluation/needle/PaulGrahamEssays/nft.txt', './evaluation/needle/PaulGrahamEssays/laundry.txt', './evaluation/needle/PaulGrahamEssays/weird.txt', './evaluation/needle/PaulGrahamEssays/siliconvalley.txt', './evaluation/needle/PaulGrahamEssays/worked.txt', './evaluation/needle/PaulGrahamEssays/rootsoflisp.txt', './evaluation/needle/PaulGrahamEssays/goodtaste.txt', './evaluation/needle/PaulGrahamEssays/copy.txt', './evaluation/needle/PaulGrahamEssays/want.txt', './evaluation/needle/PaulGrahamEssays/desres.txt', './evaluation/needle/PaulGrahamEssays/know.txt', './evaluation/needle/PaulGrahamEssays/hubs.txt', './evaluation/needle/PaulGrahamEssays/iflisp.txt', './evaluation/needle/PaulGrahamEssays/foundervisa.txt', './evaluation/needle/PaulGrahamEssays/superangels.txt', './evaluation/needle/PaulGrahamEssays/boss.txt', './evaluation/needle/PaulGrahamEssays/aord.txt', './evaluation/needle/PaulGrahamEssays/newideas.txt', './evaluation/needle/PaulGrahamEssays/avg.txt', './evaluation/needle/PaulGrahamEssays/gh.txt', './evaluation/needle/PaulGrahamEssays/rss.txt', './evaluation/needle/PaulGrahamEssays/startuplessons.txt', './evaluation/needle/PaulGrahamEssays/philosophy.txt', './evaluation/needle/PaulGrahamEssays/ecw.txt', './evaluation/needle/PaulGrahamEssays/mod.txt', './evaluation/needle/PaulGrahamEssays/web20.txt']
-            # for file in glob.glob(f"{self.haystack_dir}/*.txt"):
-            for file in file_list:
-                with open(file, 'r') as f:
-                    context += f.read()
-        return context
-
-    def get_tokens_from_context(self, context):
-        if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
-            return self.enc.encode(context)
-        elif self.model_provider == "Anthropic":
-            # Assuming you have a different encoder for Anthropic
-            return self.enc.encode(context).ids
+        file_list_pt = file_list_dict[str(self.file_order_idx)]
+        
+        max_context_length = max(self.context_lengths)  
+        curr_context_length = 0  
+        context_ids = torch.tensor([], dtype=torch.int64)  
+        
+        while curr_context_length < max_context_length:  
+            for file in file_list_pt:  
+                text_ids = torch.load(file)  
+                context_ids = torch.cat((context_ids, text_ids), dim=1)  
+                curr_context_length += text_ids.shape[1]  
+                if curr_context_length >= max_context_length:  
+                    break  # 一旦达到最大上下文长度，就跳出循环  
+        
+        return context_ids  
+        
+    def load_books(self):
+        config = AutoConfig.from_pretrained(self.model_name)
+        if config.model_type == "mistral":
+            books_path = f"evaluation/needle/books_data/books_{self.use_books_idx}_mistral.pt"
         else:
-            raise ValueError("model_provider must be either 'OpenAI' or 'Anthropic'")
+            books_path = f"evaluation/needle/books_data/books_{self.use_books_idx}_llama2.pt"
+
+        context_ids = torch.load(books_path)
+
+        return context_ids  
         
     def decode_tokens(self, tokens, context_length=None):
         if self.model_provider in ["OpenAI", "LLaMA", "Mistral", "GLM"]:
@@ -713,12 +772,21 @@ if __name__ == "__main__":
     parser.add_argument('--context_lengths_num_intervals', type=int, default=40, help='context_lengths_num_intervals')
     parser.add_argument('--document_depth_percent_intervals', type=int, default=10, help='document_depth_percent_intervals')
     
+    parser.add_argument('--seq_series', type=str, default=None, help='seq_series')
+    parser.add_argument("--doc_depth_series", type=str, default=None)
+    
     parser.add_argument('--haystack_dir', type=str, default="./evaluation/needle/PaulGrahamEssays", help='path to PaulGrahamEssays')
     parser.add_argument('--result_path', type=str, default="./evaluation/needle/results", help='path to result output')
     
     parser.add_argument("--max_tokens", type=int, default=8192)
-    parser.add_argument("--prompt_template", type=str, default="base")
+    
+    parser.add_argument("--prompt_template", type=str, default="ANTHROPIC_TEMPLATE_ORIGINAL")
     parser.add_argument("--needle_type", type=str, default="origin")
+    parser.add_argument("--city_idx", type=int, default=25)
+    parser.add_argument("--random_num", type=int, default=4571243)
+    parser.add_argument("--file_order_idx", type=int, default=0)
+    parser.add_argument("--use_books_idx", type=int, default=None)
+    
     # parser.add_argument("--method", type=str, default=None, help='RoPE method in [longrope pi ntk yarn]'
     #                     )
     
@@ -730,6 +798,8 @@ if __name__ == "__main__":
     parser.add_argument("--cube_trace", action="store_true")
     parser.add_argument("--rope_method", type=str, default="s_pi")
     parser.add_argument("--rope_tmps", type=str, default="su")
+    
+    parser.add_argument("--static_scale", type=str, default=None)
     
     from evaluation.model_loader_llama import add_args
     # parser= argparse.ArgumentParser()
@@ -744,32 +814,41 @@ if __name__ == "__main__":
         assert(args.model_name is not None)
         model_name = args.model_name
     
+    
+    if args.doc_depth_series != None:
+        doc_depth_series_list = args.doc_depth_series.split(",")
+        document_depth_percents = [int(item) for item in doc_depth_series_list]
+        document_depth_percents = np.array(document_depth_percents)
+    
     origin_needle = "\nThe special magic {city} number is: {rnd_number}\n"
     origin_retrieval_question ="What is the special magic {city} number?"
     
-    RANDOM_NEEDLE_CITIES  = [
-        'Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Chicago', 'Mexico City',
-        'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar',
-        'Dakar', 'Sofia', 'Kigali', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Almaty', 'Amman',
-        'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'Cairo', 'San Francisco',
-        'Lagos', 'Amsterdam', 'Paris', 'Rabat', 'Santiago', 'Copenhagen', 'Madrid', 'Kigali',
-        'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Ho Chi Minh City', 'Khartoum', 'Helsinki',
-        'Doha', 'Istanbul', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo',
-        'Johannesburg', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Barcelona', 'Chicago', 'Port Louis',
-        'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Khartoum', 'Jakarta',
-        'Madrid', 'Yerevan', 'Beirut', 'Athens', 'Chicago', 'Paris', 'Bucharest', 'Copenhagen', 'Brussels',
-        'Damascus', 'Seattle', 'Los Angeles', 'Yerevan', 'Victoria', 'Tunis', 'Astana', 'Seoul',
-        'Buenos Aires', 'Bangkok', 'Colombo', 'Brussels', 'Khartoum', 'Doha', 'San Francisco', 'Vienna', 'Jakarta']
+    # RANDOM_NEEDLE_CITIES  = [
+    #     'Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Chicago', 'Mexico City',
+    #     'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar',
+    #     'Dakar', 'Sofia', 'Kigali', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Almaty', 'Amman',
+    #     'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'Cairo', 'San Francisco',
+    #     'Lagos', 'Amsterdam', 'Paris', 'Rabat', 'Santiago', 'Copenhagen', 'Madrid', 'Kigali',
+    #     'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Ho Chi Minh City', 'Khartoum', 'Helsinki',
+    #     'Doha', 'Istanbul', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo',
+    #     'Johannesburg', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Barcelona', 'Chicago', 'Port Louis',
+    #     'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Khartoum', 'Jakarta',
+    #     'Madrid', 'Yerevan', 'Beirut', 'Athens', 'Chicago', 'Paris', 'Bucharest', 'Copenhagen', 'Brussels',
+    #     'Damascus', 'Seattle', 'Los Angeles', 'Yerevan', 'Victoria', 'Tunis', 'Astana', 'Seoul',
+    #     'Buenos Aires', 'Bangkok', 'Colombo', 'Brussels', 'Khartoum', 'Doha', 'San Francisco', 'Vienna', 'Jakarta']
+    unique_cities_ordered = ['Chicago', 'Yangon', 'Antananarivo', 'Colombo', 'Almaty', 'Sydney', 'Mexico City', 'Seattle', 'Lagos', 'Amsterdam', 'Belgrade', 'Cairo', 'Baghdad', 'Damascus', 'Kigali', 'Dakar', 'Sofia', 'Victoria', 'Tashkent', 'Mumbai', 'Barcelona', 'Amman', 'Toronto', 'Bratislava', 'Johannesburg', 'Thimphu', 'Bangkok', 'Santiago', 'San Francisco', 'Paris', 'Rabat', 'Copenhagen', 'Madrid', 'Ho Chi Minh City', 'Sarajevo', 'Delhi', 'Istanbul', 'Khartoum', 'Helsinki', 'Doha', 'Kuala Lumpur', 'Budapest', 'Shanghai', 'Moscow', 'Los Angeles', 'Oslo', 'Berlin', 'Bangalore', 'Tokyo', 'Melbourne', 'Port Louis', 'Lisbon', 'Nairobi', 'Kampala', 'Lima', 'Maputo', 'Vancouver', 'Dubai', 'Jakarta', 'Yerevan', 'Beirut', 'Athens', 'Bucharest', 'Brussels', 'Tunis', 'Astana', 'Seoul', 'Buenos Aires', 'Vienna']
+    
     import random
     random.seed(42)
-    rand_city = random.choice(RANDOM_NEEDLE_CITIES)
-    rand_city = 'Thimphu'
+    rand_city = random.choice(unique_cities_ordered)
+    # rand_city = 'Thimphu'
+    rand_city = unique_cities_ordered[args.city_idx]
     
     num_digits = 7
     lower_bound = 10**(num_digits - 1)
     upper_bound = 10**num_digits - 1
     rnd_number = random.randint(lower_bound, upper_bound)
-    rnd_number = 4571243
+    rnd_number = args.random_num
     
     origin_needle = origin_needle.format(city=rand_city, rnd_number=rnd_number)
     origin_retrieval_question = origin_retrieval_question.format(city=rand_city)
@@ -777,8 +856,10 @@ if __name__ == "__main__":
     needle ="\nThe best thing to do in San Francisco is eat a sandwich and sit in Dolores Park on a sunny day.\n"
     retrieval_question="What is the best thing to do in San Francisco?"
     
-    cube.init()
-    
+    if args.use_cube:
+        import cube
+        cube.init()
+
     ht = LLMNeedleHaystackTester(model_name=model_name, 
                                  model_name_suffix=args.model_name_suffix,
                                  model_provider=args.model_provider,
@@ -796,7 +877,10 @@ if __name__ == "__main__":
                                  prompt_template=args.prompt_template,
                                  needle=origin_needle if args.needle_type=="origin" else needle,
                                  retrieval_question = origin_retrieval_question if args.needle_type=="origin" else retrieval_question,
-                                 
+                                 seq_series = args.seq_series,
+                                 file_order_idx=args.file_order_idx,
+                                 use_books_idx=args.use_books_idx,
+                                 document_depth_percents=document_depth_percents if args.doc_depth_series else None
                                  )
     if not args.cube_trace:
         ht.start_test(args)

@@ -183,7 +183,7 @@ class CubeLlamaDynamicScaledRotaryEmbedding(torch.nn.Module):
                  scale=1.0,
                  base=10000, device=None, 
                  original_max_position_embeddings=4096,
-                 dtype=torch.float16,
+                 dtype=torch.bfloat16,
                 ):
         super().__init__()
         

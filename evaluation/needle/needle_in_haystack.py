@@ -708,7 +708,12 @@ class LLMNeedleHaystackTester:
         return context_ids  
         
     def load_books(self):
-        books_path = f"evaluation/needle/books_data/books_{self.use_books_idx}_mistral.pt"
+        config = AutoConfig.from_pretrained(self.model_name)
+        if config.model_type == "mistral":
+            books_path = f"evaluation/needle/books_data/books_{self.use_books_idx}_mistral.pt"
+        else:
+            books_path = f"evaluation/needle/books_data/books_{self.use_books_idx}_llama2.pt"
+
         context_ids = torch.load(books_path)
 
         return context_ids  

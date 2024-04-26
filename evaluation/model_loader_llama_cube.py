@@ -59,6 +59,7 @@ def load_model(model, config, args):
     # assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"
         
     for idx, each in enumerate(model.model.layers):
+        print("each.self_attn.head_dim", each.self_attn.head_dim)
         each.self_attn.rotary_emb = CubeLlamaDynamicScaledRotaryEmbedding(
             dim=each.self_attn.head_dim, 
             scale=scaling_factor,
@@ -67,7 +68,7 @@ def load_model(model, config, args):
             dtype=torch_dtype,
         ) 
                 
-    return model, config
+    return model
 
 try:
     import torch
@@ -128,7 +129,7 @@ def load_model_ppl(model, config, args):
         each.self_attn.rotary_emb = CubeLlamaDynamicScaledRotaryEmbedding(
             dim=each.self_attn.head_dim, 
             scale=scaling_factor,
-            # max_position_embeddings=args.max_position_embeddings,
+            max_position_embeddings=args.max_position_embeddings,
             original_max_position_embeddings=args.original_max_position_embeddings, 
             dtype=torch_dtype,
         ) 

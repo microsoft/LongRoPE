@@ -106,6 +106,7 @@ def generate(args, model, infer_fn, config, tokenizer, prompt_ids, pass_key=None
             lambda_1 = np.full((32, 64), 1.0)
             
     else:
+        # llama2
         # ft: 4k 8k 256k 512k 1024k 
         if args.finetuned and args.method == "longrope":
             if torch.distributed.get_rank() == 0:
@@ -143,7 +144,15 @@ def generate(args, model, infer_fn, config, tokenizer, prompt_ids, pass_key=None
                     print("args.max_tokens", args.max_tokens, "para_key", para_key)
                 rope_rescale = torch.load("./evaluation/rope_rescale-new-2.pt")
                 
-                lambda_1 = rope_rescale[para_key]
+                # lambda_1 = rope_rescale[para_key]
+                
+                if args.static_scale != None:
+                    lambda_1 = rope_rescale[args.static_scale]
+                    print("$$max_tokens", max_tokens, "para_key", args.static_scale)
+                else: 
+                    lambda_1 = rope_rescale[para_key]
+                    if torch.distributed.get_rank() == 0:
+                        print("$$max_tokens", max_tokens, "para_key", para_key)
             
             else:
                 raise ValueError("args.max_tokens == None")  

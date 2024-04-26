@@ -4,13 +4,14 @@ import os
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from datasets import load_from_disk
 
-teamdrive = "/mnt/yiran/teamdrive/ExtendSeqLen"
-model_bf16 = teamdrive + "/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500"
-model_fp16 = teamdrive + "/ft_out_model/cube-16k-mistral-128k/ck-400"
+teamdrive = "/mnt/yiran/teamdrive3/ExtendSeqLen"
+# model_bf16 = teamdrive + "/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500"
+# model_fp16 = teamdrive + "/ft_out_model/cube-16k-mistral-128k/ck-400"
 
+model_fp16 = teamdrive + "/Llama-2-7b-hf"
 tokenizer = AutoTokenizer.from_pretrained(model_fp16, use_fast = True )
 
-books_data = teamdrive + "/books3-test-sampled-1024k-tokenized-mistral"
+books_data = teamdrive + "/books3-test-sampled-1024k-tokenized"
 
 # BOOKS3_256K="--tokenized ${path_team}/books3-test-sampled-1024k-tokenized --dataset_min_tokens 2097152 --samples 20 --sliding_window 262144"
 dataset_min_tokens=2097152
@@ -67,13 +68,14 @@ print("sample nums", len(input_texts['input_ids']))
 for p in [19]:
     input_text = input_texts['input_ids'][p]
     input_ids_tensor = torch.tensor([input_text], dtype=torch.int64)  
-    
+    print(input_ids_tensor)
     # pt_path = f"/mnt/yiran/LongRoPE/evaluation/needle/books_{p}_mistral.pt"
     # torch.save(input_ids_tensor.cpu(), pt_path)
-    
-    out_ids = torch.cat((input_ids_tensor[0, :2000], input_ids_tensor[0, -2000:])) 
-    text = tokenizer.decode(out_ids, skip_special_tokens=True) 
-    with open("text_books19.txt", "w", encoding="utf-8") as file:
-        file.write(f"{p}: {len(input_text)}\n")  # 写入序号和长度  
-        file.write(text + "\n\n")  # 写入解码的文本并加上换行符  
+    pt_path = "evaluation/needle/books_19_llama2.pt"
+    torch.save(input_ids_tensor.cpu(), pt_path)
+    # out_ids = torch.cat((input_ids_tensor[0, :2000], input_ids_tensor[0, -2000:])) 
+    # text = tokenizer.decode(input_ids_tensor, skip_special_tokens=True) 
+    # with open("evaluation/needle/books_data/text_books19.txt", "w", encoding="utf-8") as file:
+    #     # file.write(f"{p}: {len(input_text)}\n")  # 写入序号和长度  
+    #     file.write(text + "\n\n")  # 写入解码的文本并加上换行符  
     

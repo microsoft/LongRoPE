@@ -425,3 +425,5 @@ gencode*.py
 evaluation/log-new-2.txt
 contexts-1/
 cube_graph.pb
+script/pk_eval/*.csv
+script/ppl_eval/t5/*.csv

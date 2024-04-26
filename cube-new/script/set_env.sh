@@ -69,38 +69,38 @@ if [ -n "$7" ]; then
 fi
 
 
-python -m pip install git+https://github.com/shumingma/infinibatch.git \
-    iopath \
-    boto3 \
-    dill \
-    sentencepiece \
-    more_itertools \
-    numpy==1.23.0 \
-    tensorboard \
-    psutil
+# python -m pip install git+https://github.com/shumingma/infinibatch.git \
+#     iopath \
+#     boto3 \
+#     dill \
+#     sentencepiece \
+#     more_itertools \
+#     numpy==1.23.0 \
+#     tensorboard \
+#     psutil
 
-# clone and install
-cd ${INSTALL_DIR}
-export TORCHSCALE_DEVOPS="https://${DEVOPS_TOKEN}@msrasrg.visualstudio.com/SuperScaler/_git/torchscale"
-if [ ! -d "${INSTALL_DIR}/torchscale" ]; then
-    git clone $TORCHSCALE_DEVOPS -b $TORCHSCALE_BRANCH
-else
-    echo "${INSTALL_DIR}/torchscale already exists, remove it and try again"
-    exit 1
-fi
-cd ${INSTALL_DIR}/torchscale
-python -m pip install -e .
+# # clone and install
+# cd ${INSTALL_DIR}
+# export TORCHSCALE_DEVOPS="https://${DEVOPS_TOKEN}@msrasrg.visualstudio.com/SuperScaler/_git/torchscale"
+# if [ ! -d "${INSTALL_DIR}/torchscale" ]; then
+#     git clone $TORCHSCALE_DEVOPS -b $TORCHSCALE_BRANCH
+# else
+#     echo "${INSTALL_DIR}/torchscale already exists, remove it and try again"
+#     exit 1
+# fi
+# cd ${INSTALL_DIR}/torchscale
+# python -m pip install -e .
 
-cd ${INSTALL_DIR}
-export CUBE_DEVOPS="https://${DEVOPS_TOKEN}@msrasrg.visualstudio.com/SuperScaler/_git/MagicCube"
-if [ ! -d "${INSTALL_DIR}/MagicCube" ]; then
-    git clone $CUBE_DEVOPS -b $CUBE_BRANCH
-else
-    echo "${INSTALL_DIR}/MagicCube already exists, remove it and try again"
-    exit 1
-fi
-cd ${INSTALL_DIR}/MagicCube
-python -m pip install -e .
+# cd ${INSTALL_DIR}
+# export CUBE_DEVOPS="https://${DEVOPS_TOKEN}@msrasrg.visualstudio.com/SuperScaler/_git/MagicCube"
+# if [ ! -d "${INSTALL_DIR}/MagicCube" ]; then
+#     git clone $CUBE_DEVOPS -b $CUBE_BRANCH
+# else
+#     echo "${INSTALL_DIR}/MagicCube already exists, remove it and try again"
+#     exit 1
+# fi
+# cd ${INSTALL_DIR}/MagicCube
+# python -m pip install -e .
 
 cd ${INSTALL_DIR}
 export FAIRSEQ_DEVOPS="https://${DEVOPS_TOKEN}@msrasrg.visualstudio.com/SuperScaler/_git/Fairseq"

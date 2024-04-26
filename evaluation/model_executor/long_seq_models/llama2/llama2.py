@@ -213,8 +213,8 @@ def apply_rotary_pos_emb_inference(q, k, position_ids, cos_cache, sin_cache):
     # apply_rotary_emb_func       
     bsz, seq_len, _, head_dim = q.shape
     if seq_len > 1:
-        half_cos = cos_cache.squeeze()
-        half_sin = sin_cache.squeeze()
+        half_cos = cos_cache[..., :head_dim // 2].squeeze()
+        half_sin = sin_cache[..., :head_dim // 2].squeeze()
         q = apply_rotary_emb_func(q, half_cos, half_sin, interleaved=False)
         k = apply_rotary_emb_func(k, half_cos, half_sin, interleaved=False)
     else:

@@ -26,16 +26,16 @@ echo "prompt_name: $prompt_name"
 
 # setting["longrope_128k_pose_512k_static_scale-con"]="--model ${path_team}/ft_out_model/cube-la2-128k-pose-256k-new/ck-1_400/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
 
-# setting["longrope_128k_pose_512k_static_scale-spl"]="--model ${path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
+# setting["longrope_128k_pose_512k_static_scale-spl"]="--model ${path_team}/ft_out_model/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
 
 # setting["longrope_128k_pose_512k_static_scale-tok"]="--model ${path_team}/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
 
 
-longrope_pose_512k="${path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/"
-{path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/
+longrope_pose_512k="${path_team}/ft_out_model/cube-la2-128k-pose-512k-splice/ck-2_600/"
+# {path_team}/ft_out_model/longrope-la2-128k-pose-512k/cube-la2-128k-pose-512k/ck-1_600/
 
 
-echo "cube-la2-128k-pose-512k | needle origin"
+echo "cube-la2-128k-pose-512k-splice | needle origin"
 
 declare -A setting
 
@@ -52,7 +52,7 @@ setting["longrope_pose_512k"]="-m ${longrope_pose_512k} --method longrope --fine
 # list_2m="1024000,1048000,1550000,1850000"
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
 list_2m="16000,64000,128000,200000,400000,500000,800000,900000"
-list_2m="16000"
+# list_2m="16000"
 
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
@@ -114,7 +114,7 @@ for books_idx in "${books_list[@]}"; do
         --file_order_idx 0 \
         --use_books_idx $books_idx \
         --document_depth_percent_intervals 5 \
-        --doc_depth_series "0,12,25,38,50,62,75,88,94,100" \
+        --doc_depth_series "0,25,50,75,100" \
         --model_provider Mistral \
         --model_path ${longrope_pose_512k} \
         --result_path ./evaluation/needle/result/$name/ \

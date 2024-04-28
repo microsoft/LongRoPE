@@ -52,7 +52,7 @@ setting["longrope_pose_512k"]="-m ${longrope_pose_512k} --method longrope --fine
 # list_2m="1024000,1048000,1550000,1850000"
 # mkdir -p evaluation/needle/logs evaluation/needle/img evaluation/needle/result
 list_2m="16000,64000,128000,200000,400000,500000,800000,900000"
-list_2m="16000"
+# list_2m="16000"
 
 # # clean pt
 pt_list="fullmodel.pt.* gencode* cube_graph* dist_param_map.pt"
@@ -61,7 +61,7 @@ torch_path=$(dirname $python_path)
 
 nums=3-0
 name="${nums}-cube-la2-128k"
-# rm -rf ./evaluation/needle/result/$name
+rm -rf ./evaluation/needle/result/$name
     
 echo "cube trace ..."
 gpu_num=1
@@ -93,47 +93,48 @@ CUDA_VISIBLE_DEVICES=0 $torch_path/torchrun \
     --tp_size $gpu_num \
     --cube_trace
 
-# for ck in "${ck_list[@]}"; do
-# # 14 11 9 8 4
-# books_list=(19)
-# for books_idx in "${books_list[@]}"; do  
-#     # name="${nums}-cube_longrope_mis_256k_bf16_from500_ck_${ck_step}_debug_needle_origin_books_${books_idx}"
-#     echo "books_idx:$books_idx"
 
-#     echo "cube run ..."
-#     gpu_num=8
-#     (
-#     CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
-#         --nproc_per_node=$gpu_num \
-#         --master_port 29510 \
-#         evaluation/needle/needle_in_haystack.py \
-#         --s_len 0 --e_len 2000000 \
-#         --seq_series $list_2m \
-#         --city_idx 15 \
-#         --random_num 6072345 \
-#         --file_order_idx 0 \
-#         --use_books_idx $books_idx \
-#         --document_depth_percent_intervals 5 \
-#         --doc_depth_series "0,12,25,38,50,62,75,88,94,100" \
-#         --model_provider Mistral \
-#         --model_path ${longrope_pose_512k} \
-#         --result_path ./evaluation/needle/result/$name/ \
-#         ${setting["longrope_pose_512k"]} \
-#         --flash_attn \
-#         --max_tokens 4000 \
-#         --prompt_template $prompt_name \
-#         --needle_type "origin" \
-#         --use_cube \
-#         --rope_method s_pi \
-#         --rope_tmps su \
-#         --use_cache \
-#         --tp_size $gpu_num \
-#         --static_scale "512k_la2_128k"
+for ck in "${ck_list[@]}"; do
+# 14 11 9 8 4
+books_list=(19)
+for books_idx in "${books_list[@]}"; do  
+    # name="${nums}-cube_longrope_mis_256k_bf16_from500_ck_${ck_step}_debug_needle_origin_books_${books_idx}"
+    echo "books_idx:$books_idx"
+
+    echo "cube run ..."
+    gpu_num=8
+    (
+    CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
+        --nproc_per_node=$gpu_num \
+        --master_port 29510 \
+        evaluation/needle/needle_in_haystack.py \
+        --s_len 0 --e_len 2000000 \
+        --seq_series $list_2m \
+        --city_idx 15 \
+        --random_num 6072345 \
+        --file_order_idx 0 \
+        --use_books_idx $books_idx \
+        --document_depth_percent_intervals 5 \
+        --doc_depth_series "0,12,25,38,50,62,75,88,94,100" \
+        --model_provider Mistral \
+        --model_path ${longrope_pose_512k} \
+        --result_path ./evaluation/needle/result/$name/ \
+        ${setting["longrope_pose_512k"]} \
+        --flash_attn \
+        --max_tokens 4000 \
+        --prompt_template $prompt_name \
+        --needle_type "origin" \
+        --use_cube \
+        --rope_method s_pi \
+        --rope_tmps su \
+        --use_cache \
+        --tp_size $gpu_num \
+        # --static_scale "512k_la2_128k"
         
-#     ) 2>&1  | tee evaluation/needle/logs/eval_${name}.log
+    ) 2>&1  | tee evaluation/needle/logs/eval_${name}.log
 
-#     # python evaluation/needle/visualize.py 
+    # python evaluation/needle/visualize.py 
 
-#     python evaluation/needle/visualize.py --name $name --path evaluation/needle/result/$name/ck-$ck_step/
+    python evaluation/needle/visualize.py --name $name --path evaluation/needle/result/$name/ck-$ck_step/
 
 # done

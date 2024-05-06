@@ -22,7 +22,7 @@ elif uname -a | grep -q "GCRAZGDL1499"; then
     path_team="/scratch/yiran/teamdrive/ExtendSeqLen"
     #
 elif uname -a | grep -q "aiforms2000000"; then
-    path_team="/home/aisilicon/yiran/teamdrive/ExtendSeqLen"
+    path_team="/mnt/yiran2/teamdrive/ExtendSeqLen"
     #
 elif uname -a | grep -q "aiforms2000001"; then
     path_team="/mnt/yiran/teamdrive/ExtendSeqLen"

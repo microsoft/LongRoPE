@@ -11,7 +11,10 @@ print(current_path)
 import torch
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
-from attention.llama_attn_replace import replace_llama_attn, forward_llama_for_causal_lm, forward_llama_model, forward_llama_decoder_layer
+from attention.llama_attn_replace import replace_llama_attn, forward_llama_for_causal_lm, forward_llama_decoder_layer
+
+from attention.llama_attn_replace import forward_llama_model
+
 
 import math
 import numpy as np
@@ -20,7 +23,7 @@ MODEL_LAYER = 0
 MODEL_DIM = 0
 
 def load_model(model, args):
-
+    print("$2 args.tmps", args.tmps)
     print("llama config", args.model[0])
     # if "Yarn-Llama-2-7b-64k" in args.model[0][0]:
     #     print("llama config yarn")
@@ -167,6 +170,7 @@ def load_model(model, args):
             ) 
     elif args.method == "longrope":
         print("--use ", args.method)
+        print("$3 args.tmps", args.tmps)
         from rope.LlamaLongRoPEScaledRotaryEmbedding import LlamaLongRoPEScaledRotaryEmbedding
         print("args.finetuned", args.finetuned)
         assert lambda_1.shape == (32, 64), f"lambda_1 shape error {lambda_1.shape}"     

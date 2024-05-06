@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=5
 # export HF_DATASETS_CACHE="/path/to/store/model"
 export HF_DATASETS_CACHE="../cache"
 # path_dir=/your/path/to/store/model/or/dataset
@@ -35,6 +35,11 @@ setting["longrope_128k_mistral"]="--model ${path_team}/ft_out_model/cube-16k-mis
 # longrope Mistral 256k
 setting["longrope_256k_mistral"]="--model ${path_team}/ft_out_model/cube-16k-mistral-256k/ck-400 --method longrope  --finetuned --factor 64.0 --original_max_position_embeddings 4096 --sliding_window_attention 262144"
 
+setting["longrope_mistral_128k_bf16"]="--model ${path_team}/ft_out_model/cube-mis-128k-bf16/ck-1_1000 --method longrope --finetuned --factor 32 --sliding_window_attention 131072 --original_max_position_embeddings 4096"
+
+setting["longrope_mistral_256k_bf16_from_step500"]="--model ${path_team}/ft_out_model/cube-mis-256k-bf16-step-500/ck-1_500 --method longrope  --finetuned --sliding_window_attention 262144 --factor 64 --original_max_position_embeddings 4096"
+
+
 # dataset setting
 # PROOFPILE_test="--tokenized ${path_team}/proofpile-test-tokenized --dataset_min_tokens 131072 --samples 1 --truncate"
 
@@ -53,13 +58,14 @@ save_memory="" # check
 # config_list=("base" "together" "longlora" "codellama" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 # config_list=("base" "together" "longlora" "yarn_64k" "yarn_128k" "longrope_128k" "longrope_256k")
 
-config_list=("longrope_128k_mistral" "longrope_256k_mistral") # check
+config_list=("longrope_mistral_128k_bf16" "longrope_mistral_256k_bf16_from_step500") # check
 
 echo "dataset PROOFPILE 10sample"
 # max_tokens_list=(4096 8192 32768 65536 98304 131072)
 max_tokens_list=(4096 8192)
 # tmp_list=(0.8 0.85 0.9 0.95 1.0 1.05 1.1 1.15 1.2 1.25 1.3)
-tmp_list=(1.01 1.02 1.03 1.04 1.06 1.07 1.08 1.09 1.11 1.12 1.13 1.14)
+tmp_list=(0.8 0.85 0.9 0.95 1.0 1.05 1.1 1.15 1.2 1.25 1.3 1.01 1.02 1.03 1.04 1.06 1.07 1.08 1.09 1.11 1.12 1.13 1.14)
+
 for tmp in "${tmp_list[@]}"; do
     for config in "${config_list[@]}"; do
         for max_tokens in "${max_tokens_list[@]}"; do

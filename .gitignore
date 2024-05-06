@@ -422,3 +422,10 @@ script/ppl_eval/compare*
 
 longrope_*.csv
 script/ppl_eval/tmp/proofpile_longrope*.csv
+
+script/ppl_eval/t5/t5_proofpile_*.csv
+script/ppl_eval/t6/t6_books3_*.csv
+script/hf_benchmark/tmp-search/ft_out_model/
+script/hf_benchmark/tmp-search/Llama-2-7b-hf/
+script/ppl_eval/t5/4k-pose/*.csv
+

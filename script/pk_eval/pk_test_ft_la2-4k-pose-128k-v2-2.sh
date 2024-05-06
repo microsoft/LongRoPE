@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=3
 
 path_dir=/your/path/to/store/model/or/dataset
 # ${path_dir}
@@ -21,25 +21,31 @@ path_dir=$path_team
 
 
 #  longrope 128k pose 4k
-setting["longrope_128k_pose_4k-fliter-step1000"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-2_1000 --method longrope --finetuned --factor 32.0"
+# setting["longrope_128k_pose_4k-fliter-step1000"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-2_1000 --method longrope --finetuned --factor 32.0"
 # /mnt/yiran/teamdrive3/ExtendSeqLen/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-2_1000
 
-setting["longrope_128k_pose_4k-fliter-step600"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-1_600 --method longrope --finetuned --factor 32.0"
+# setting["longrope_128k_pose_4k-fliter-step600"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-1_600 --method longrope --finetuned --factor 32.0"
 
 
-setting["longrope_128k_pose_4k-pad-step1000"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000 --method longrope --finetuned --factor 32.0"
+# setting["longrope_128k_pose_4k-pad-step1000"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000 --method longrope --finetuned --factor 32.0"
 # /mnt/yiran/teamdrive3/ExtendSeqLen/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000
 
-setting["longrope_128k_pose_4k-pad-step600"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000 --method longrope --finetuned --factor 32.0"
+# setting["longrope_128k_pose_4k-pad-step600"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000 --method longrope --finetuned --factor 32.0"
+
+setting["longrope_128k_pose_4k-fliter-2000step"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-2000step/ck-3_2000/ --method longrope --finetuned --factor 32.0"
+
+setting["longrope_128k_pose_4k-fliter-2xdoc"]="--model ${path_dir}/ft_out_model/cube-la2-4k-128k-same-doc-fliter-2xdoc/ck-2_2000 --method longrope --finetuned --factor 32.0"
 
 # tokens_list=(4096)
-tokens_list=(131072 163840 262144)
+tokens_list=(16384 32768 65536 102400 131072 163840 204800 262144)
 # method_list=(pi_ft dy_ntk_ft yarn_ft dy_yarn_ft s_pi_ft dy_s_pi_ft)
 method_list=( \
-    "longrope_128k_pose_4k-fliter-step1000" \
+    # "longrope_128k_pose_4k-fliter-step1000" \
     # "longrope_128k_pose_4k-fliter-step600" \
     # "longrope_128k_pose_4k-pad-step1000" \
     # "longrope_128k_pose_4k-pad-step600" \
+    # "longrope_128k_pose_4k-fliter-2000step" \
+    "longrope_128k_pose_4k-fliter-2xdoc" \
     ) # check
 for method in "${method_list[@]}"; do
     for len_tokens in "${tokens_list[@]}"; do
@@ -56,7 +62,7 @@ for method in "${method_list[@]}"; do
             --flash_attn \
             --cache_dir "../cache_dir" \
             --original_max_position_embeddings 4096 \
-            --output-file "./script/pk_eval/${method}_${len_tokens}_pk_itr10.csv" \
+            --output-file "./script/pk_eval/4k-pose-v2/${method}_${len_tokens}_pk_itr10.csv" \
             --aggressive_mem_decoder \
             --aggressive_mem_causal_lm \
             --aggressive_mem_attn

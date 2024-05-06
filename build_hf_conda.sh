@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# conda create -n longrope_hf_eval python==3.10.13
+# conda create -n longrope_hf_eval python==3.10.13 -y
 # conda activate longrope_hf_eval
 cd evaluation/lm-evaluation-harness/
 pip install -e .

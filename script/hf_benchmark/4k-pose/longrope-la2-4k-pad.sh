@@ -2,6 +2,8 @@
 
 # run job
 # ./script/hf_benchmark/longrope-mis-128k-step-tmp.sh 0 ARC 1_100
+# ./script/hf_benchmark/4k-pose/longrope-la2-4k-pad.sh 2 ARC ; ./script/hf_benchmark/4k-pose/longrope-la2-4k-pad.sh 2 HELLASWAG ; ./script/hf_benchmark/4k-pose/longrope-la2-4k-pad.sh 2 MMLU ; ./script/hf_benchmark/4k-pose/longrope-la2-4k-pad.sh 2 TRUTHFULQA ;
+
 
 # ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 ARC 1.0; ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 HELLASWAG 1.0; ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 MMLU 1.0; ./script/hf_benchmark/longrope-la2-4k-step-tmp.sh 0 TRUTHFULQA 1.0;
 
@@ -58,7 +60,7 @@ job["TRUTHFULQA"]="--tasks=truthfulqa_mc --num_fewshot=0"
 # 获取传入的参数  
 GPU_DEVICES=$1  
 job_name=$2  
-tmps=$3  
+# tmps=$3  
   
 # 执行输入检查  
 check_gpu_id "$GPU_DEVICES"  
@@ -82,20 +84,23 @@ BASE_PATH=$path_dir
 
 # model config
 # MODEL_PATH="/ft_out_model/cube-128k-dim-piece-mono-500-#m0/ck-400/"
-MODEL_PATH="/Llama-2-7b-hf/"
+# MODEL_PATH="/Llama-2-7b-hf/"
+# MODEL_PATH=/ft_out_model/cube-la2-128k-pose-256k-new/ck-1_400/
+# MODEL_PATH=/ft_out_model/cube-la2-4k-128k-same-doc/cube-la2-4k-128k-same-doc/checkpoint/ck-2_1000
+MODEL_PATH=/ft_out_model/cube-la2-4k-128k-same-doc-pad/cube-la2-4k-128k-same-doc-pad/checkpoint/ck-1_1000
 
 METHOD="pi"
-MARK="bs2_la2_4k_tmps${tmps}"
+MARK="bs2_la2_4k_pose_pad"
 FACTOR=1
 SPI_PARA="./script/hf_benchmark/low_scale/low_scale_la2_128k_4k.csv"
 
-MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=flase,tmps=${tmps},max_position_embeddings=2048,original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4100"
+MODEL_ARGS="model=${BASE_PATH}${MODEL_PATH},method=${METHOD},factor=${FACTOR},finetuned=flase,max_position_embeddings=2048,original_max_position_embeddings=4096,cache_dir=./cache_dir,max_tokens=4100"
 
 OUTPUT_PATH="./script/hf_benchmark/tmp-search"
 
 
 echo "################################"
-printf "GPU_DEVICES:$GPU_DEVICES, \njob_name:$job_name,\nck_tmps:$tmps \n"
+printf "GPU_DEVICES:$GPU_DEVICES, \njob_name:$job_name,\n"
 echo "################################"
 
 python evaluation/lm-evaluation-harness/main.py \

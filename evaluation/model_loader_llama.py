@@ -11,7 +11,10 @@ print(current_path)
 import torch
 import torch.nn.functional as F
 from torch.nn import CrossEntropyLoss
-from attention.llama_attn_replace import replace_llama_attn, forward_llama_for_causal_lm, forward_llama_model, forward_llama_decoder_layer
+from attention.llama_attn_replace import replace_llama_attn, forward_llama_for_causal_lm, forward_llama_decoder_layer
+
+from attention.llama_attn_replace import forward_llama_model
+
 
 import math
 import numpy as np

@@ -27,7 +27,7 @@ def generate_prompt(n_garbage):
 
     task_description = "There is an important info hidden inside a lot of irrelevant text. Find it and memorize them. I will quiz you about the important information there."
     garbage = "The grass is green. The sky is blue. The sun is yellow. Here we go. There and back again."
-    garbage_inf = " ".join([garbage] * 10000)
+    garbage_inf = " ".join([garbage] * 100000)
     assert len(garbage_inf) >= n_garbage
     garbage_prefix = garbage_inf[:n_garbage_prefix]
     garbage_suffix = garbage_inf[:n_garbage_suffix]

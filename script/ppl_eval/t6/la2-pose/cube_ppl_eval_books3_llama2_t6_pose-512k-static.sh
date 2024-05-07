@@ -36,8 +36,8 @@ setting["longrope_128k_pose_512k_static_scale-con"]="--model ${path_team}/ft_out
 
 setting["longrope_128k_pose_512k_static_scale-spl"]="--model ${path_team}/ft_out_model/cube-la2-128k-pose-512k-splice/ck-2_600/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
 
-setting["longrope_128k_pose_512k_static_scale-tok"]="--model ${path_team}/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
-
+setting["longrope_128k_pose_512k_static_scale-tok"]="--model ${path_team}/ft_out_model/cube-la2-128k-pose-512k-tokenize/ck-4_1000/ --method longrope --longrope_para ./script/longrope_scale/512k_la2_128k.csv --factor 128.0 "
+# ExtendSeqLen/ft_out_model/cube-la2-128k-pose-512k-tokenize/ck-4_1000/
 
 # setting["longrope_128k_pose_512k_static_scale-new-scale-128"]="--model ${path_team}/ft_out_model/cube-la2-128k-pose-256k-new/ck-1_400/ --method longrope --longrope_para ./script/longrope_scale/512k-la2-128k.csv --factor 1.0 "
 
@@ -78,7 +78,8 @@ save_memory="" # check
 config_list=(\
     # "longrope_128k-static-512" \
     # "longrope_128k_pose_512k_static_scale-con" \
-    "longrope_128k_pose_512k_static_scale-spl"\
+    # "longrope_128k_pose_512k_static_scale-spl"\
+    "longrope_128k_pose_512k_static_scale-tok" \
     )
 # config_list=()
 python_path=$(which python)
@@ -86,7 +87,7 @@ torch_path=$(dirname $python_path)
 # max_tokens_list=(4096 8192 32768 65536 98304 131072 1048576)
 
 # max_tokens_list=(32768 65536 131072 262144 524288)
-max_tokens_list=( 524288)
+max_tokens_list=(32768 65536 131072 262144 524288)
 
 
 # max_tokens_list=(524288 )
@@ -99,7 +100,7 @@ for config in "${config_list[@]}"; do
     max_tokens=8192
     echo "config: $config trace ... ... "
     rm $pt_list
-    CUDA_VISIBLE_DEVICES=0 $torch_path/torchrun \
+    CUDA_VISIBLE_DEVICES=2 $torch_path/torchrun \
         --nproc_per_node=$gpu_num \
         --master_port 29520 \
         evaluation/perplexity.py \
@@ -120,7 +121,7 @@ for config in "${config_list[@]}"; do
         --cube_trace
     
     echo "config: $config run ... ... "
-    gpu_num=8
+    gpu_num=2
     for max_tokens in "${max_tokens_list[@]}"; do
         echo "####### $config, max-tokens=$max_tokens #############"
         rm -rf /tmp/tmp*
@@ -129,7 +130,7 @@ for config in "${config_list[@]}"; do
         else  
             dataset=${BOOKS3_2048K}  
         fi
-        CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 $torch_path/torchrun \
+        CUDA_VISIBLE_DEVICES=2,3 $torch_path/torchrun \
             --nproc_per_node=$gpu_num \
             --master_port 29520 \
             evaluation/perplexity.py \

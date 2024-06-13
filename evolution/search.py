@@ -68,7 +68,7 @@ def select_init_factors(
 
 def main(args):
     sock = socket.socket()
-    sock.bind(('', 0))
+    sock.bind(('localhost', 0))
     host, port = sock.getsockname()
     logger.info(f'Initialize server on host={host}, port={port}')
 

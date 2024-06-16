@@ -18,9 +18,9 @@ def main(args):
         args.dataset,
         name=args.subset,
         split=args.split,
-        cache_dir=args.cache_dir,
         num_proc=args.num_proc,
         ignore_verifications=True,
+        trust_remote_code=True,
     )
 
     def tokenize(example):
@@ -51,6 +51,5 @@ if __name__ == "__main__":
     parser.add_argument("--feature", type=str)
     parser.add_argument("--save-tokenized", type=str)
     parser.add_argument("--num-proc", type=int, default=4)
-    parser.add_argument("--cache-dir", type=str, default=None)
 
     main(parser.parse_args())

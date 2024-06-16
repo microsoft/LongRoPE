@@ -103,7 +103,6 @@ def main(args):
                 'attn-implementation': args.attn_implementation,
                 'attn-sliding-window': args.attn_sliding_window,
                 'use-cache': args.use_cache,
-                'cache-dir': args.cache_dir,
                 'num-proc': args.num_proc,
                 'save-memory': args.save_memory,
             },
@@ -117,9 +116,18 @@ def main(args):
     head_size = config.hidden_size // config.num_attention_heads
     half_head_size = head_size // 2
     target_length = int(args.target_length)
-    original_length = getattr(config, 'sliding_window', getattr(config, 'max_position_embeddings', None))
-    length_scale = target_length / original_length if args.rope_scale is None else args.rope_scale
+    if hasattr(config, 'sliding_window') and config.sliding_window is not None:
+        original_length = config.sliding_window
+    else:
+        original_length = config.max_position_embeddings
+    length_scale = target_length / original_length if args.length_scale is None else args.length_scale
     rope_base = getattr(config, 'rope_embedding_base', getattr(config, 'rope_theta', None))
+    if config.model_type == 'mistral' or config.model_type == 'mixtral':
+        rope_model_type = 'mistral'
+    else:
+        if not (config.model_type == 'llama' or config.model_type == 'phi3'):
+            logger.warning(f'Setting model type to llama for unrecognized model type: {config.model_type}')
+        rope_model_type = 'llama'
 
     rope_args = {
         'dim': head_size,
@@ -127,6 +135,7 @@ def main(args):
         'max_position_embeddings': target_length,
         'original_max_position_embeddings': original_length,
         'base': rope_base,
+        'model_type': rope_model_type,
     }
 
     set_seed()
@@ -220,14 +229,13 @@ if __name__ == "__main__":
     parser.add_argument("--ppl-sliding-window", type=int, default=256)
     parser.add_argument("--truncate", action="store_true")
     parser.add_argument("--attn-implementation", type=str, default="flash_attention_2")
-    parser.add_argument("--attn-sliding-window", type=int, default=None)
+    parser.add_argument("--attn-sliding-window", type=int, default=-1)
     parser.add_argument("--use-cache", action="store_true")
-    parser.add_argument("--cache-dir", type=str, default=None)
     parser.add_argument("--num-proc", type=int, default=4)
     parser.add_argument("--hyper-params", type=str, default=None)
     parser.add_argument("--init-factors", type=str, default=None)
     parser.add_argument("--auto-rescale-init-factors", action="store_true")
-    parser.add_argument("--rope-scale", type=float, default=None)
+    parser.add_argument("--length-scale", type=float, default=None)
     parser.add_argument("--recovery", type=str, default=None)
     parser.add_argument("--save-memory", action="store_true")
     parser.add_argument("--model-size-gb", type=float, default=14)

@@ -56,7 +56,7 @@ def load_model(
     model_class: type = AutoModelForCausalLM,
     config: AutoConfig = None,
     rope_params: dict = None,
-    attn_sliding_window: int = None,
+    attn_sliding_window: int = -1,
     save_memory: bool = False,
     **model_args,
 ):
@@ -87,9 +87,9 @@ def load_model(
         config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
 
     # NOTE: please force using attn_implementation="flash_attention_2" for now
-    if hasattr(config, 'sliding_window'):
+    if hasattr(config, 'sliding_window') and config.sliding_window is not None:
         original_max_position_embeddings = config.sliding_window
-        if attn_sliding_window is not None:
+        if attn_sliding_window > 0:
             logger.info(f"Change attention sliding window size: {config.sliding_window} => {attn_sliding_window}")
             config.sliding_window = attn_sliding_window
     else:
@@ -125,15 +125,21 @@ def load_model(
         replace_methods(model)
 
     if need_replace_rope:
+        if config.model_type == 'mistral' or config.model_type == 'mixtral':
+            rope_model_type = 'mistral'
+        else:
+            if not (config.model_type == 'llama' or config.model_type == 'phi3'):
+                logger.warning(f'Setting model type to llama for unrecognized model type: {config.model_type}')
+            rope_model_type = 'llama'
         rope_class = None
         rope_args = {
             'original_max_position_embeddings': original_max_position_embeddings,
             'max_position_embeddings': max_position_embeddings,
             'scale': scaling_factor,
-            'base': getattr(config, 'rope_embedding_base', getattr(config, 'rope_theta', None))
+            'base': getattr(config, 'rope_embedding_base', getattr(config, 'rope_theta', None)),
+            'model_type': rope_model_type,
         }
         if rope_method.startswith('yarn'):
-            rope_args['finetuned'] = False
             if rope_method == 'yarn':
                 rope_class = LlamaYaRNScaledRotaryEmbedding
             elif rope_method == 'yarn_dynamic':

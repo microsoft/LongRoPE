@@ -48,7 +48,7 @@ class LlamaYaRNScaledRotaryEmbedding(torch.nn.Module):
         attn_factor=1,
         beta_fast=32,
         beta_slow=1,
-        finetuned=False,
+        model_type="llama",
         device=None,
     ):
         super().__init__()
@@ -77,7 +77,15 @@ class LlamaYaRNScaledRotaryEmbedding(torch.nn.Module):
         self.register_buffer("cos_cached", (emb.cos() * self.mscale).to(dtype), persistent=False)
         self.register_buffer("sin_cached", (emb.sin() * self.mscale).to(dtype), persistent=False)
 
-    def forward(self, x, seq_len=None):
+        if model_type == "llama":
+            self.forward = self._forward_llama
+        elif model_type == "mistral":
+            self.forward = self._forward_mistral
+        else:
+            raise ValueError(f"Unsupported model type for LongRoPE: {model_type}")
+
+    @torch.no_grad()
+    def _forward_mistral(self, x, seq_len=None):
         # x: [bs, num_attention_heads, seq_len, head_size]
         # This `if` block is unlikely to be run after we build sin/cos in `__init__`. Keep the logic here just in case.
         if seq_len > self.max_seq_len_cached:
@@ -101,6 +109,22 @@ class LlamaYaRNScaledRotaryEmbedding(torch.nn.Module):
                 self.cos_cached.to(dtype=x.dtype),
                 self.sin_cached.to(dtype=x.dtype),
             )
+
+    @torch.no_grad()
+    def _forward_llama(self, x, position_ids, seq_len=None):
+        inv_freq_expanded = self.inv_freq[None, :, None].to(x.device).float().expand(position_ids.shape[0], -1, 1)
+        position_ids_expanded = position_ids[:, None, :].float()
+
+        # Force float32 since bfloat16 loses precision on long contexts
+        # See https://github.com/huggingface/transformers/pull/29285
+        device_type = x.device.type
+        device_type = device_type if isinstance(device_type, str) and device_type != "mps" else "cpu"
+        with torch.autocast(device_type=device_type, enabled=False):
+            freqs = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
+            emb = torch.cat((freqs, freqs), dim=-1)
+            cos = emb.cos() * self.mscale
+            sin = emb.sin() * self.mscale
+        return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
     def yarn(self, device):
         pos_freqs = self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)

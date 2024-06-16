@@ -80,7 +80,7 @@ pip install -r requirements.txt
 Tokenize PG19 as evolution search validation dataset and Proof-Pile as evaluation dataset.
 
 ```bash
-bash ./examples/tokenzie-data.sh
+bash ./examples/llama2/tokenzie-data.sh
 ```
 
 ### Evolution Search
@@ -88,7 +88,7 @@ bash ./examples/tokenzie-data.sh
 Run evoluation search for Llama2-7b (4k) to sequence length of 128k:
 
 ``` bash
-bash ./examples/search.sh
+bash ./examples/llama2/search.sh
 ```
 
 The default evolution search hyperparameters are located in `evolution/default_hyper_params/*.json`. Users can customize the number of iterations, population size, number of parents, number of mutation and crossover operations in each iteration. These parameters will affect the convergence time and robustness of searching results.
@@ -96,7 +96,7 @@ The default evolution search hyperparameters are located in `evolution/default_h
 ### Evaluation
 Evaluate long-context perplexity and passkey accuracy:
 ``` bash
-bash ./examples/evaluate.sh
+bash ./examples/llama2/evaluate.sh
 ```
 
 

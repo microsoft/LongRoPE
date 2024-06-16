@@ -116,7 +116,7 @@ def main(args):
     rope_method = os.environ.get('ROPE_METHOD', None)
     if rope_method.startswith('longrope'):
         rope_params = {
-            'longrope_params_path': os.environ['LONGROPE_PARAMS'],
+            'longrope_params_path': os.environ['LONGROPE_RESCALE_FACTOR'],
             'longrope_scaling_policy': os.environ['LONGROPE_SCALING_POLICY'],
         }
     else:
@@ -128,13 +128,13 @@ def main(args):
         dtype = getattr(torch, args.dtype)
         torch.set_default_dtype(dtype)
 
-    max_position_embeddings = int(os.environ['SEQ_LEN']) if args.finetuned else None
+    max_num_tokens = int(os.environ['TARGET_LENGTH'])
+    logger.info(f"Loading model: {args.model} (max_position_embeddings={max_num_tokens})")
     model = load_model(
         model_name_or_path=args.model,
         rope_method=rope_method,
-        max_position_embeddings=max_position_embeddings,
+        max_position_embeddings=max_num_tokens,
         rope_params=rope_params,
-        cache_dir=args.cache_dir,
         attn_implementation=args.attn_implementation,
         attn_sliding_window=args.attn_sliding_window,
         torch_dtype=dtype,
@@ -182,11 +182,9 @@ if __name__ == "__main__":
     parser.add_argument("--ppl-sliding-window", type=int, default=256)
     parser.add_argument("--truncate", action="store_true")
     parser.add_argument("--output-file", type=str, default=None)
-    parser.add_argument("--finetuned",  action="store_true")
     parser.add_argument("--attn-implementation", type=str, default="eager")
-    parser.add_argument("--attn-sliding-window", type=int, default=None)
+    parser.add_argument("--attn-sliding-window", type=int, default=-1)
     parser.add_argument("--use-cache", action="store_true")
-    parser.add_argument("--cache-dir", type=str, default=None)
     parser.add_argument("--num-proc", type=int, default=4)
     parser.add_argument("--save-memory", action="store_true")
     parser.add_argument("--dtype", type=str, default=None)

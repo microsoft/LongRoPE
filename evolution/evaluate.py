@@ -41,7 +41,6 @@ def main(args):
     model_args = {
         'rope_method': None,
         'max_position_embeddings': target_length,
-        'cache_dir': args.cache_dir,
         'attn_implementation': args.attn_implementation,
         'attn_sliding_window': args.attn_sliding_window,
         'torch_dtype': torch.float16,
@@ -96,7 +95,6 @@ if __name__ == "__main__":
     parser.add_argument("--attn-implementation", type=str, default="flash_attention_2")
     parser.add_argument("--attn-sliding-window", type=int, default=None)
     parser.add_argument("--use-cache", action="store_true")
-    parser.add_argument("--cache-dir", type=str, default=None)
     parser.add_argument("--num-proc", type=int, default=4)
     parser.add_argument("--save-memory", action="store_true")
     args = parser.parse_args()

@@ -30,6 +30,7 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         original_max_position_embeddings=4096,
         base=10000,
         magnitude_scaling_policy="su",
+        model_type="llama",
         device=None,
     ):
         super().__init__()
@@ -47,11 +48,18 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             calc_mscale = lambda scale: float(magnitude_scaling_policy)
         self.mscale = calc_mscale(self.max_position_embeddings / self.original_max_position_embeddings)
 
-        rescale_factors = torch.tensor(rescale_factors, dtype=torch.float32, device=device)
-        assert rescale_factors.shape == (self.dim // 2, ), \
-            f"misaligned shape for LongRoPE rescale factors: {rescale_factors.shape}"
+        self.rescale_factors = torch.tensor(rescale_factors, dtype=torch.float32, device=device)
+        assert self.rescale_factors.shape == (self.dim // 2, ), \
+            f"misaligned shape for LongRoPE rescale factors: {self.rescale_factors.shape}"
 
-        inv_freq = 1.0 / (rescale_factors * (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim)))
+        if model_type == "llama":
+            self.forward = self._forward_llama
+        elif model_type == "mistral":
+            self.forward = self._forward_mistral
+        else:
+            raise ValueError(f"Unsupported model type for LongRoPE: {model_type}")
+
+        inv_freq = 1.0 / (self.rescale_factors * (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim)))
         self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def _calc_mscale_su(self, scale):
@@ -64,12 +72,34 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             return 1.0
         return 0.1 * math.log(scale) + 1.0
 
-    def forward(self, x, seq_len=None):
+    @torch.no_grad()
+    def _forward_mistral(self, x, seq_len=None):
         t = torch.arange(seq_len, device=x.device, dtype=torch.float32)
         inv_freq = self.inv_freq.to(x.device)
         freqs = torch.outer(t, inv_freq)
         emb = torch.cat((freqs, freqs), dim=-1)
         return (emb.cos() * self.mscale).to(x.dtype), (emb.sin() * self.mscale).to(x.dtype)
+
+    @torch.no_grad()
+    def _forward_llama(self, x, position_ids, seq_len=None):
+        ext_factors = self.rescale_factors.to(x.device)
+
+        inv_freq_shape = torch.arange(0, self.dim, 2, dtype=torch.int64, device=x.device).float() / self.dim
+        self.inv_freq = 1.0 / (ext_factors * self.base**inv_freq_shape)
+
+        inv_freq_expanded = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
+        position_ids_expanded = position_ids[:, None, :].float()
+
+        # Force float32 since bfloat16 loses precision on long contexts
+        # See https://github.com/huggingface/transformers/pull/29285
+        device_type = x.device.type
+        device_type = device_type if isinstance(device_type, str) and device_type != "mps" else "cpu"
+        with torch.autocast(device_type=device_type, enabled=False):
+            freqs = (inv_freq_expanded.float() @ position_ids_expanded.float()).transpose(1, 2)
+            emb = torch.cat((freqs, freqs), dim=-1)
+            cos = emb.cos() * self.mscale
+            sin = emb.sin() * self.mscale
+        return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
 
 class LlamaDynamicLongRoPEScaledRotaryEmbedding(LlamaLongRoPEScaledRotaryEmbedding):

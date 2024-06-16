@@ -2,11 +2,11 @@
 
 TARGET_LENGTH=$((32 * 1024))
 
-MODEL_PATH=meta-llama/Llama-2-7b-hf
-DATASET_PATH=$(pwd)/datasets/pg19-valid-llama-tokenized
-RESULT_PATH=$(pwd)/results/search/llama2-7b/$TARGET_LENGTH
+MODEL_PATH=microsoft/Phi-3-mini-4k-instruct
+DATASET_PATH=$(pwd)/datasets/pg19-valid-phi3-tokenized
+RESULT_PATH=$(pwd)/results/search/phi3-mini/$TARGET_LENGTH
 
-# Running evolution search to find the best LongRoPE rescale factors on Llama-2-7b model.
+# Running evolution search to find the best LongRoPE rescale factors on Phi-3-mini-4k-instruct model.
 python evolution/search.py \
     --model $MODEL_PATH \
     --tokenized $DATASET_PATH \
@@ -17,4 +17,5 @@ python evolution/search.py \
     --samples 5 \
     --truncate \
     --attn-implementation flash_attention_2 \
-    --model-size-gb 14
+    --attn-sliding-window 131072 \
+    --model-size-gb 8

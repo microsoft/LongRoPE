@@ -87,7 +87,7 @@ def load_model(
         config = AutoConfig.from_pretrained(model_name_or_path, trust_remote_code=True)
 
     # NOTE: please force using attn_implementation="flash_attention_2" for now
-    if hasattr(config, 'sliding_window'):
+    if hasattr(config, 'sliding_window') and config.sliding_window is not None:
         original_max_position_embeddings = config.sliding_window
         if attn_sliding_window > 0:
             logger.info(f"Change attention sliding window size: {config.sliding_window} => {attn_sliding_window}")

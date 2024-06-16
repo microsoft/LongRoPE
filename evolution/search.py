@@ -116,7 +116,10 @@ def main(args):
     head_size = config.hidden_size // config.num_attention_heads
     half_head_size = head_size // 2
     target_length = int(args.target_length)
-    original_length = getattr(config, 'sliding_window', getattr(config, 'max_position_embeddings', None))
+    if hasattr(config, 'sliding_window') and config.sliding_window is not None:
+        original_length = config.sliding_window
+    else:
+        original_length = config.max_position_embeddings
     length_scale = target_length / original_length if args.length_scale is None else args.length_scale
     rope_base = getattr(config, 'rope_embedding_base', getattr(config, 'rope_theta', None))
     if config.model_type == 'mistral' or config.model_type == 'mixtral':

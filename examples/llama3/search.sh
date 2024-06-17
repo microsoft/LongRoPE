@@ -2,11 +2,11 @@
 
 TARGET_LENGTH=$((32 * 1024))
 
-MODEL_PATH=meta-llama/Llama-2-7b-hf
+MODEL_PATH=meta-llama/Meta-Llama-3-8B
 DATASET_PATH=$(pwd)/datasets/pg19-valid-llama-tokenized
-RESULT_PATH=$(pwd)/results/search/llama2-7b/$TARGET_LENGTH
+RESULT_PATH=$(pwd)/results/search/llama3-8b/$TARGET_LENGTH
 
-# Running evolution search to find the best LongRoPE rescale factors on Llama-2-7b model.
+# Running evolution search to find the best LongRoPE rescale factors on Llama-3-8B model.
 python evolution/search.py \
     --model $MODEL_PATH \
     --tokenized $DATASET_PATH \

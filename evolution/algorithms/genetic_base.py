@@ -186,7 +186,7 @@ class GeneticAlgorithm:
         indv = Individual(factors)
         rescale_factors = self.extract_factors(factors).tolist()
         rope_args={
-            'rope_class': 'LlamaLongRoPEScaledRotaryEmbedding',
+            'rope_class': 'LongRoPEScaledRotaryEmbedding',
             'rescale_factors': rescale_factors,
             **self.rope_args,
         }

@@ -8,9 +8,9 @@ export TARGET_LENGTH=$((32 * 1024))
 MODEL_PATH=meta-llama/Meta-Llama-3-8B
 DATASETS_PATH=$(pwd)/datasets
 
-export ROPE_METHOD=none
-# export LONGROPE_RESCALE_FACTOR=$(pwd)/results/search/llama3-8b/$TARGET_LENGTH/result_final.csv
-# export LONGROPE_SCALING_POLICY=su
+export ROPE_METHOD=longrope
+export LONGROPE_RESCALE_FACTOR=$(pwd)/results/search/llama3-8b/$TARGET_LENGTH/result_final.csv
+export LONGROPE_SCALING_POLICY=su
 
 export OUTPUT_DIR=$(pwd)/results/eval/llama3-8b/$TARGET_LENGTH
 mkdir -p $OUTPUT_DIR

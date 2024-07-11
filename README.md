@@ -4,11 +4,17 @@
 
 Here is the link of our paper: [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://arxiv.org/pdf/2402.13753)
 
+LongRoPE now is applied to microsoft Phi-3 model series:
+- [Phi-3-mini-128k-instruct](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
+- [Phi-3-small-128k-instruct](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
+- [Phi-3-medium-128k-instruct](https://huggingface.co/microsoft/Phi-3-medium-128k-instruct)
+- [Phi-3-vision-128k-instruct](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct)
+
 ## What does LongRoPE do?
 
 The LongRoPE algorithm is inspired by the discovery of the two forms of non-uniformities in positional inter polation: varying RoPE dimensions and token positions. In order to achieve the best performance on long context windows using non-uniform positional embeddings, LongRoPE:
 - Exploit the best positional embedding rescaling parameters through an efficient search, providing a better initialization for fine-tuning and enabling an 8x extension in non-fine-tuning scenarios;
-- Introduce a progressive extension strategy that first fine-tunes a 256k length LLM and then con ducts a second positional interpolation on the fine tuned extended LLM to achieve a 2048k context window;
+- Introduce a progressive extension strategy that first fine-tunes a 256k length LLM and then conducts a second positional interpolation on the fine-tuned extended LLM to achieve a 2048k context window;
 - Readjust scaling factors and retained start tokens on 8k length to recover the short context window performance.
 
 ## What is LongRoPE’s intended uses?
@@ -69,7 +75,7 @@ Measure the retrieval accurary of key information in long garbage context:
 ### Build Environment
 
 ``` bash
-conda create -n longrope python==3.11
+conda create -n longrope python==3.10
 conda activate longrope
 # flash-attn needs cuda >= 11.7
 pip install -r requirements.txt

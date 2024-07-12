@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     warnings.simplefilter("ignore")
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format=f'[Evaluator #{args.idx} | %(asctime)s] %(message)s',
         datefmt='%m-%d %H:%M',
     )

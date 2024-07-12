@@ -53,7 +53,7 @@ def compute_perplexity(
         attn_masks = [x[:max_tokenized_len] for x in attn_masks]
         sliding_window = max_tokenized_len
 
-    pbar = tqdm(total=len(encoded_texts))
+    pbar = tqdm(total=len(encoded_texts), disable=logger.level <= logging.INFO)
 
     nlls = []
     for encoded_text in encoded_texts:

@@ -1,3 +1,5 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT license.
 import types
 
 from .llama_forward import forward_llama_model, forward_llama_for_causal_lm

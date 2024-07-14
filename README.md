@@ -66,7 +66,7 @@ LongRoPE currently supports the following Phi3-128k LLMs with 128k context windo
 
 ## What does LongRoPE do?
 
-The LongRoPE algorithm is inspired by the discovery of the two forms of non-uniformities in positional inter polation: varying RoPE dimensions and token positions. In order to achieve the best performance on long context windows using non-uniform positional embeddings, LongRoPE:
+The LongRoPE algorithm is built upon the two forms of non-uniformities in positional interpolation: varying RoPE dimensions and token positions. In order to achieve the best performance on long context windows using non-uniform positional embeddings, LongRoPE:
 - Exploit the best positional embedding rescaling parameters through an efficient search, providing a better initialization for fine-tuning and enabling an 8x extension in non-fine-tuning scenarios;
 - Introduce a progressive extension strategy that first fine-tunes a 256k length LLM and then conducts a second positional interpolation on the fine-tuned extended LLM to achieve a 2048k context window;
 - Readjust scaling factors and retained start tokens on 8k length to recover the short context window performance.

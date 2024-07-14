@@ -5,10 +5,7 @@ import torch
 import transformers
 
 
-_UNSQUEEZE_CACHE = int(transformers.__version__.split('.')[1]) < 36
-
-
-class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
+class LongRoPEScaledRotaryEmbedding(torch.nn.Module):
     """
     LongRoPE Scaled Rotary Positional Encoding class for Llama-like model.
 
@@ -58,11 +55,9 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             self.forward = self._forward_llama
         elif model_type == "mistral":
             self.forward = self._forward_mistral
+            self.register_buffer("inv_freq", self._calc_inv_freq(max_position_embeddings, device))
         else:
             raise ValueError(f"Unsupported model type for LongRoPE: {model_type}")
-
-        inv_freq = 1.0 / (self.rescale_factors * (base ** (torch.arange(0, dim, 2, dtype=torch.float32, device=device) / dim)))
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
 
     def _calc_mscale_su(self, scale):
         if scale <= 1.0:
@@ -74,8 +69,14 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
             return 1.0
         return 0.1 * math.log(scale) + 1.0
 
+    def _calc_inv_freq(self, seq_len, device):
+        rescale_factors = self.rescale_factors.to(device)
+        exponent = torch.arange(0, self.dim, 2, dtype=torch.float32, device=device) / self.dim
+        return 1.0 / (rescale_factors * (self.base ** exponent))
+
     @torch.no_grad()
     def _forward_mistral(self, x, seq_len=None):
+        seq_len = x.shape[-2] if seq_len is None else seq_len
         t = torch.arange(seq_len, device=x.device, dtype=torch.float32)
         inv_freq = self.inv_freq.to(x.device)
         freqs = torch.outer(t, inv_freq)
@@ -84,12 +85,9 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
 
     @torch.no_grad()
     def _forward_llama(self, x, position_ids, seq_len=None):
-        ext_factors = self.rescale_factors.to(x.device)
-
-        inv_freq_shape = torch.arange(0, self.dim, 2, dtype=torch.int64, device=x.device).float() / self.dim
-        self.inv_freq = 1.0 / (ext_factors * self.base**inv_freq_shape)
-
-        inv_freq_expanded = self.inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
+        seq_len = x.shape[-2] if seq_len is None else seq_len
+        inv_freq = self._calc_inv_freq(seq_len, x.device)
+        inv_freq_expanded = inv_freq[None, :, None].float().expand(position_ids.shape[0], -1, 1)
         position_ids_expanded = position_ids[:, None, :].float()
 
         # Force float32 since bfloat16 loses precision on long contexts
@@ -104,91 +102,50 @@ class LlamaLongRoPEScaledRotaryEmbedding(torch.nn.Module):
         return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
 
-class LlamaDynamicLongRoPEScaledRotaryEmbedding(LlamaLongRoPEScaledRotaryEmbedding):
+class DynamicLongRoPEScaledRotaryEmbedding(LongRoPEScaledRotaryEmbedding):
 
-    def _set_cos_sin_cache(self, seq_len, device, dtype):
-        self.max_seq_len_cached = seq_len
-        t = torch.arange(self.max_seq_len_cached, device=device, dtype=self.inv_freq.dtype)
-
-        dynamic_scale = ((seq_len / self.original_max_position_embeddings) - 1) / (self.scale - 1)
+    def _calc_inv_freq(self, seq_len, device):
+        rescale_factors = self.rescale_factors.to(device)
+        current_scale = seq_len / self.original_max_position_embeddings
+        original_scale = self.max_position_embeddings / self.original_max_position_embeddings
+        dynamic_scale = (current_scale - 1.0) / (original_scale - 1.0)
         rescale_factors = 1.0 + (self.rescale_factors - 1.0) * dynamic_scale
-        inv_freq = 1.0 / (rescale_factors * (self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)))
-        self.register_buffer("inv_freq", inv_freq)
-
-        freqs = torch.einsum("i,j->ij", t, self.inv_freq)
-
-        mscale = self._calc_mscale(seq_len / self.original_max_position_embeddings)
-
-        emb = torch.cat((freqs, freqs), dim=-1)
-        if _UNSQUEEZE_CACHE:
-            emb_cos = (emb.cos() * mscale)[None, None, :, :]
-            emb_sin = (emb.sin() * mscale)[None, None, :, :]
-        else:
-            emb_cos = emb.cos() * mscale
-            emb_sin = emb.sin() * mscale
-
-        self.register_buffer("cos_cached", emb_cos.to(dtype), persistent=False)
-        self.register_buffer("sin_cached", emb_sin.to(dtype), persistent=False)
+        exponent = torch.arange(0, self.dim, 2, dtype=torch.float32, device=device) / self.dim
+        return 1.0 / (rescale_factors * (self.base ** exponent))
 
 
-class LlamaMixedLongRoPEScaledRotaryEmbedding(LlamaLongRoPEScaledRotaryEmbedding):
+class MixedLongRoPEScaledRotaryEmbedding(LongRoPEScaledRotaryEmbedding):
 
     def __init__(
         self,
         dim, 
         rescale_factors,
+        start_token_idx,
+        original_embeddings,
+        scale=1.0,
         max_position_embeddings=4096,
         original_max_position_embeddings=4096,
         base=10000,
         magnitude_scaling_policy="su",
-        start_token_idx=0,
-        original_embeddings=None,
+        model_type="llama",
         device=None,
     ):
         self.start_token_idx = start_token_idx
-        self.original_embeddings = original_embeddings
-        
+        self.original_embeddings = (x.to(device) for x in original_embeddings)
         super().__init__(
-            dim=dim,
-            rescale_factors=rescale_factors,
-            max_position_embeddings=max_position_embeddings,
-            original_max_position_embeddings=original_max_position_embeddings,
-            base=base,
-            magnitude_scaling_policy=magnitude_scaling_policy,
-            device=device,
+            dim, rescale_factors, scale, max_position_embeddings, original_max_position_embeddings,
+            base, magnitude_scaling_policy, model_type, device,
         )
+        self._longrope_forward = self.forward
+        self.forward = lambda *inputs: self._add_original_embeddings(self._longrope_forward(*inputs))
 
-    def _set_cos_sin_cache(self, seq_len, device, dtype):
-        self.max_seq_len_cached = seq_len
-        t = torch.arange(self.max_seq_len_cached, device=device, dtype=self.inv_freq.dtype)
-
-        inv_freq = 1.0 / (self.rescale_factors * (self.base ** (torch.arange(0, self.dim, 2).float().to(device) / self.dim)))
-        self.register_buffer("inv_freq", inv_freq)
-
-        freqs = torch.einsum("i,j->ij", t, self.inv_freq)
-
-        mscale = self._calc_mscale(seq_len / self.original_max_position_embeddings)
-
-        emb = torch.cat((freqs, freqs), dim=-1)
-        if _UNSQUEEZE_CACHE:
-            emb_cos = (emb.cos() * mscale)[None, None, :, :]
-            emb_sin = (emb.sin() * mscale)[None, None, :, :]
-        else:
-            emb_cos = emb.cos() * mscale
-            emb_sin = emb.sin() * mscale
-
+    def _add_original_embeddings(self, emb_cos, emb_sin):
         if self.start_token_idx > 0:
             assert self.original_embeddings is not None, \
                 'need input original embeddings for start token index > 0'
             emb_cos_origin, emb_sin_origin = self.original_embeddings
             assert emb_cos_origin.shape == emb_cos.shape and emb_sin_origin.shape == emb_cos.shape, \
                 'original embeddings shape should be the same with current embeddings'
-            if _UNSQUEEZE_CACHE:
-                emb_cos[:, :, 0:self.start_token_idx, :] = emb_cos_origin[:, :, 0:self.start_token_idx, :]
-                emb_sin[:, :, 0:self.start_token_idx, :] = emb_sin_origin[:, :, 0:self.start_token_idx, :]
-            else:
-                emb_cos[0:self.start_token_idx, :] = emb_cos_origin[0:self.start_token_idx, :]
-                emb_sin[0:self.start_token_idx, :] = emb_sin_origin[0:self.start_token_idx, :]
-
-        self.register_buffer("cos_cached", emb_cos.to(dtype), persistent=False)
-        self.register_buffer("sin_cached", emb_sin.to(dtype), persistent=False)
+            emb_cos[..., :self.start_token_idx, :] = emb_cos_origin[..., :self.start_token_idx, :]
+            emb_sin[..., :self.start_token_idx, :] = emb_sin_origin[..., :self.start_token_idx, :]
+        return emb_cos, emb_sin

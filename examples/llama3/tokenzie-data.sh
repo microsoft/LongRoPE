@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MODEL_PATH=meta-llama/Llama-2-7b-hf
+MODEL_PATH=meta-llama/Meta-Llama-3-8B
 
 DATASETS_PATH=$(pwd)/datasets
 mkdir -p $DATASETS_PATH
@@ -17,7 +17,7 @@ fi
 
 PROOF_PILE_PATH=hoskinson-center/proof-pile
 
-# Tokenize PG19 as evolution search validation dataset using Llama-2-7b model
+# Tokenize PG19 as evolution search validation dataset using Llama-3-8B model
 python utils/tokenize_dataset.py \
     --model $MODEL_PATH \
     --dataset $PG19_PATH \
@@ -25,7 +25,7 @@ python utils/tokenize_dataset.py \
     --feature text \
     --save-tokenized $DATASETS_PATH/pg19-valid-llama-tokenized
 
-# Tokenize Proof-Pile as evaluation dataset using Llama-2-7b model
+# Tokenize Proof-Pile as evaluation dataset using Llama-3-8B model
 python utils/tokenize_dataset.py \
     --model $MODEL_PATH \
     --dataset $PROOF_PILE_PATH \

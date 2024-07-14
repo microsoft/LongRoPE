@@ -71,7 +71,7 @@ class Evaluator(object):
 
     def get_result(self) -> float:
         result = json.loads(self.conn.recv(self.buf_size).decode())['result']
-        logger.info(f'Evaluator [addr={self.addr}, device={self.device_str}] result={result}')
+        logger.debug(f'Evaluator [addr={self.addr}, device={self.device_str}] result={result}')
         return result
 
     def finalize(self):
@@ -188,7 +188,7 @@ class GeneticAlgorithm:
         indv = Individual(factors)
         rescale_factors = self.extract_factors(factors).tolist()
         rope_args={
-            'rope_class': 'LlamaLongRoPEScaledRotaryEmbedding',
+            'rope_class': 'LongRoPEScaledRotaryEmbedding',
             'rescale_factors': rescale_factors,
             **self.rope_args,
         }
@@ -232,19 +232,22 @@ class GeneticAlgorithm:
         if self.recovery is None:
             population = []
             latest_iteration = 0
-            indv = self.make_indv(self.init_factors)
-            logger.info(f"[Population #{0:0>3d}]:{indv}")
-            population.append(indv)
-            self.history.append(indv)
-            for i in range(self.population_size - 1):
-                new_indv = self.mutate(indv)
+            pbar = tqdm(range(self.population_size), desc=f'Generate Initial Population')
+            for i in pbar:
+                if i == 0:
+                    indv = self.make_indv(self.init_factors)
+                    new_indv = indv
+                else:
+                    new_indv = self.mutate(indv)
                 population.append(new_indv)
-                logger.info(f'[Population #{i + 1:0>3d}]: {new_indv}')
+                self.history.append(new_indv)
+                if new_indv.ppl is not None:
+                    pbar.set_postfix(last_ppl=new_indv.ppl)
+                logger.debug(f'[Population #{i:0>3d}] {new_indv}')
         else:
             logger.info(f"Recover from {self.recovery}")
             with open(self.recovery) as f:
                 data = json.loads(f.read())
-            
             latest_iteration = data['iteration']
             population = [Individual(np.array(factors), ppl) for factors, ppl in data['population']]
             if "history" in data:
@@ -253,57 +256,53 @@ class GeneticAlgorithm:
         self.queue.join()
 
         population_str = '\n'.join(map(str, population))
-        logger.info(f"Iteration #{latest_iteration}\nPopulation:\n{population_str}")
-        logger.info("Start Evolution")
+        logger.debug(f"Iteration #{latest_iteration}\nPopulation:\n{population_str}")
+        logger.info("Start Evolution Search")
 
         best_indv = Individual(None, np.inf)
         best_ppl_records = []
 
-        with tqdm(total=self.max_time_budget, desc="Searching") as t:
-            for i in range(latest_iteration, latest_iteration + self.max_time_budget):
-                parents = sorted(population, key=lambda x: x.ppl)[:self.parents_size]
-                self.log(i, parents)
+        for i in range(latest_iteration, latest_iteration + self.max_time_budget):
+            parents = sorted(population, key=lambda x: x.ppl)[:self.parents_size]
+            self.log(i, parents)
 
-                current_best_indv = parents[0]
-                best_ppl_records.append(current_best_indv.ppl)
-                t.set_postfix({"ppl": current_best_indv.ppl})
+            current_best_indv = parents[0]
+            best_ppl_records.append(current_best_indv.ppl)
 
-                logger.info(f"[Iter #{i + 1:0>3d} Best] {current_best_indv}")
+            logger.info(f"[Iter #{i + 1:0>3d} Best] {current_best_indv}")
 
-                if current_best_indv.ppl < best_indv.ppl:
-                    best_indv = current_best_indv
+            if current_best_indv.ppl < best_indv.ppl:
+                best_indv = current_best_indv
 
-                population = parents
+            population = parents
 
-                # 变异
-                for j in range(self.mutation_numbers):
-                    idx = np.random.randint(self.parents_size)
-                    mutated_indv = self.mutate(parents[idx])
-                    population.append(mutated_indv)
-                    logger.info(f'[Mutate #{i:0>3d} / #{j:0>3d}] {parents[idx]} / {mutated_indv}')
+            # 变异
+            pbar = tqdm(range(self.mutation_numbers), desc=f'Iter #{i + 1:0>3d} Mutation')
+            for j in pbar:
+                idx = np.random.randint(self.parents_size)
+                mutated_indv = self.mutate(parents[idx])
+                population.append(mutated_indv)
+                if mutated_indv.ppl is not None:
+                    pbar.set_postfix(last_ppl=mutated_indv.ppl)
+                logger.debug(f'[Mutate #{i:0>3d} / #{j:0>3d}] {parents[idx]} / {mutated_indv}')
 
-                # 交叉
-                for j in range(self.crossover_size):
-                    idx1, idx2 = np.random.choice(self.parents_size, 2, replace=False)
-                    idx1, idx2 = sorted([idx1, idx2])
-                    crossover_indv = self.crossover(parents[idx1], parents[idx2])
-                    if crossover_indv is None:
-                        logger.info(f'Crossover reach max {self.max_crossover_try} trys. Mutate from parent #1 instead.')
-                        crossover_indv = self.mutate(parents[idx1])
-                    logger.info(f'[Crossover #{i:0>3d} / #{j:0>3d}] {parents[idx1]} / {parents[idx2]} / {crossover_indv}')
-                    population.append(crossover_indv)
+            self.queue.join()
 
-                t.update(1)
+            # 交叉
+            pbar = tqdm(range(self.crossover_size), desc=f'Iter #{i + 1:0>3d} Crossover')
+            for j in pbar:
+                idx1, idx2 = np.random.choice(self.parents_size, 2, replace=False)
+                idx1, idx2 = sorted([idx1, idx2])
+                crossover_indv = self.crossover(parents[idx1], parents[idx2])
+                if crossover_indv is None:
+                    logger.debug(f'Crossover reach max {self.max_crossover_try} trys. Mutate from parent #1 instead.')
+                    crossover_indv = self.mutate(parents[idx1])
+                population.append(crossover_indv)
+                if crossover_indv.ppl is not None:
+                    pbar.set_postfix(last_ppl=crossover_indv.ppl)
+                logger.debug(f'[Crossover #{i:0>3d} / #{j:0>3d}] From #{idx1:0>3d} + {idx2:0>3d}')
 
-                if i >= self.max_time_budget - 2:
-                    population_str = '\n'.join(map(str, population))
-                    logger.info(f'[Iter #{i + 1:0>3d} New Population]\n{population_str}')
-
-                self.queue.join()
-
-                # early stop
-                # if i >= latest_iteration + 20 and abs(best_ppl_records[i] - best_ppl_records[i-20]) < 0.001:
-                #     break
+            self.queue.join()
 
         final_population = sorted(population, key=lambda x: x.ppl)[:self.parents_size]
         self.log(i, final_population)

@@ -1,75 +1,85 @@
 # LongRoPE
+ 
+**LongRoPE** is an effective approach that extends LLM context window beyond 2048k tokens by non-uniformly rescaling RoPE positional embeddings. LongRoPE is accepted by ICML 2024 and has been integrated into Microsoft Phi-3. Learn more about the work [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://arxiv.org/pdf/2402.13753):
 
-**LongRoPE** is a project to extend the context window of pre-trained LLMs to a maximum of 2048k tokens by modifying positional embeddings.
+<p align="center">
+  <img src="assets/logo.png" width="500px">
+</p>
+<p align="center">
+    🤗 <a href="https://huggingface.co/papers/2402.13753">Huggingface Daily Paper</a>
+</p>
+<p align="center">
+    <a href="https://mp.weixin.qq.com/s/4ryyv59ofNOD--RCSdqktQ">Microsoft Research Official Blog</a>
+</p>
+<p align="center">
+    <a href="https://www.microsoft.com/en-us/research/blog/research-focus-week-of-march-18-2024/">Microsoft Research Blog</a>
+</p>
 
-Here is the link of our paper: [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://arxiv.org/pdf/2402.13753)
+## LongRoPE in Phi3-128k LLMs
+LongRoPE currently supports the following Phi3-128k LLMs with 128k context window.
+
+- [Phi-3-mini-128k-instruct](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
+- [Phi-3-small-128k-instruct](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
+- [Phi-3-medium-128k-instruct](https://huggingface.co/microsoft/Phi-3-medium-128k-instruct)
+- [Phi-3-vision-128k-instruct](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct)
+
+### [RULER](https://github.com/hsiehjackson/RULER)
+| Model | Context Window | 4k | 8k | 16k | 32k | 64k | 128k | Avg |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Gemini-1.5-pro | 1M | 96.7 | 95.8 | 96 | 95.9 | 95.9 | 94.4 | 95.8 |
+| GPT-4-1106-preview | 128k | 96.6 | 96.3 | 95.2 | 93.2 | 87 | 81.2 | 91.6 |
+| GradientAI/LLaMA3 (70B) | 1M | 95.2 | 93.4 | 93.4 | 89.4 | 82.6 | 72 | 87.7 |
+| **Phi3-mini-128k (3.8B)** | **128k** | **92.3** | **91.2** | **90.8** | **87.7** | **79.8** | **65.3** | **84.5** |
+| Mixtral-8x22B | 64k | 95.6 | 94.9 | 93.4 | 90.9 | 84.7 | 31.7 | 81.9 |
+| ChatGLM (6B) | 128k | 87.8 | 83.4 | 78.6 | 69.9 | 56.0 | 42.0 | 69.6 |
+| LongChat (7B) | 32k | 84.7 | 79.9 | 70.8 | 59.3 | 0 | 0 | 49.1 |
+
+### Long context code understanding ([RepoQA](https://github.com/evalplus/repoqa))
+| Model | Context Window | Python | cpp | java | typescript | rust | avg |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| GPT-4o-2024-05-13 | 128k | 95 | 80 | 85 | 96 | 97 | 90.6 |
+| Gemini-1.5-pro-latest | 1M | 91 | 81 | 91 | 94 | 96 | 90.6 |
+| claude-3-opus-20240229 | 200k | 93 | 83 | 88 | 95 | 94 | 90.6 |
+| **Phi3-mini-128k-Instruct** | **128k** | **86** | **64** | **73** | **94** | **71** | **77.6** |
+| GPT-4-turbo-2024-04-09 | 128k | 84 | 79 | 75 | 89 | 55 | 76.4 |
+| Mixtral-8x22B-Instruct-v0.1 | 64k | 60 | 67 | 74 | 83 | 55 | 67.8 |
+
+###  More short tasks
+| Model | MMLU | GSM8K | MedQA | AGIEval | BBH-Hard | HumanEval |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| **Phi3-mini-128k-Instruct** | **68.1** | **83.6** | **55.3** | **36.9** | **71.5** | **57.9** |
+| Mistral-7B | 61.7 | 46.4 | 49.6 | 35.1 | 57.3 | 28 |
+| Gemma 7B | 63.6 | 59.8 | 50 | 42.1 | 59.6 | 34.1 |
+| LLaMA3-Instruct-8B | 66.5 | 77.4 | 60.5 | 42 | 51.5 | 60.4 |
+| Mixtral 8x7B | 68.4 | 64.7 | 62.2 | 45.2 | 69.7 | 37.8 |
+
+### Multi-modality long context support
+| Model | MMMU | MMBench | ScienceQA | MathVista | InterGPS | ChartQA |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| **Phi3-vision 128k-instruct** | **40.4** | **80.5** | **90.8** | **44.5** | **38.1** | **81.4** |
+| LLaVA 1.6-vicuna-7B | 34.2 | 76.3 | 70.6 | 31.5 | 20.5 | 55.0 |
+| QWEN-VL Chat | 39.0 | 75.8 | 67.2 | 29.4 | 22.3 | 50.9 |
+| LLaMA3-LLaVA Next-8B | 36.4 | 79.4 | 73.7 | 34.8 | 24.6 | 65.8 |
+| Claude-3-Haiku | 40.7 | 62.4 | 72.0 | 33.2 | 32.1 | 59.3 |
+| Gemini 1.0 Pro V | 42.0 | 80.0 | 79.7 | 35.0 | 28.6 | 58.0 |
+| GPT-4V Turbo | 55.5 | 86.1 | 75.7 | 47.5 | 41.0 | 62.3 |
 
 ## What does LongRoPE do?
 
-The LongRoPE algorithm is inspired by the discovery of the two forms of non-uniformities in positional inter polation: varying RoPE dimensions and token positions. In order to achieve the best performance on long context windows using non-uniform positional embeddings, LongRoPE:
+The LongRoPE algorithm is built upon the two forms of non-uniformities in positional interpolation: varying RoPE dimensions and token positions. In order to achieve the best performance on long context windows using non-uniform positional embeddings, LongRoPE:
 - Exploit the best positional embedding rescaling parameters through an efficient search, providing a better initialization for fine-tuning and enabling an 8x extension in non-fine-tuning scenarios;
-- Introduce a progressive extension strategy that first fine-tunes a 256k length LLM and then con ducts a second positional interpolation on the fine tuned extended LLM to achieve a 2048k context window;
+- Introduce a progressive extension strategy that first fine-tunes a 256k length LLM and then conducts a second positional interpolation on the fine-tuned extended LLM to achieve a 2048k context window;
 - Readjust scaling factors and retained start tokens on 8k length to recover the short context window performance.
 
-## What is LongRoPE’s intended uses?
-
-LongRoPE intent to search for optimal RoPE rescale factors to extent context window of LLMs. Users could apply our code to get longer context window of their own models.
-
-Intended audience for this release should be researchers who want to extend context window length of their own models. To use this code safely and appropriately, users should carefully read our [paper](https://arxiv.org/pdf/2402.13753) first.
-
-> Note: Additional validation would need to be done before this was used in production environments. This is not intended for production use.
-
-> Note: LongRoPE’s code currently only supports English.
-
-## LongRoPE Performance
-
-We evaluate LongRoPE on following metrics:
-
-### Long-Context Perplexity
-
-- **Proof-pile**
-
-| Context Window | 4096 | 8192 | 32768 | 65536 | 98304 | 131072 | 262244 |
-| :-------------: | :----------------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
-| LongRoPE-LLaMA2-2048k | 3.85 | 3.65 | 3.63 | 2.38 | 2.28 | 2.26 | 1.87 |
-| LongRoPE-Mistral-2048k | 3.20 | 3.04 | 2.36 | 2.18 | 2.13 | 2.14 | 1.84 |
-
-- **Books3**
-
-| Context Window | 8k | 16k | 32k | 64k | 128k | 256k | 512k | 1024k | 2048k |
-| :-------------: | :----------------: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
-| LongRoPE-LLaMA2-2048k | 6.81 | 6.66 | 6.31 | 6.27 | 6.21 | 6.17 | 6.17 | 6.35 | 7.08 |
-| LongRoPE-Mistral-2048k | 6.63 | 6.48 | 6.38 | 6.43 | 6.68 | 7.15 | 7.98 | 9.42 | 13.71 |
-
-- **PG19**
-
-| Context Window | 8k | 64k | 128k |
-| :-------------: | :-----: | :-----: | :-----: |
-| LongRoPE-LLaMA2-2048k | 7.37 | 6.64 | 6.31 |
-| LongRoPE-Mistral-2048k | 7.10 | 6.98 | 7.13 |
-
-### HuggingFace Open LLM Benchmark
-
-| | Context Window | ARC-C | HellaSwag | MMLU | TruthfulQA |
-| :-------------: | :------: | :-----: | :-----: | :-----: | :-----: |
-| LongRoPE-LLaMA2-2048k | 2048k | 51.0 | 75.3 | 39.6 | 37.3 |
-| LongRoPE-Mistral-2048k | 2048k | 59.2 | 80.9 | 61.1 | 42.2 |
+Due to policy restrictions, only evolution search part is now released. Any LLM training techniques such as [EasyContext](https://github.com/jzhang38/EasyContext) and [nnScaler](https://github.com/microsoft/nnscaler) can be applied to the fine-tuning stage.
 
 
-### Passkey Accuracy
-Measure the retrieval accurary of key information in long garbage context:
-| Context Window | 4k, 8k, 16k, 64k, 100k, 128k, 160k, 256k, 512k | 1024k | 1800k | 2048k |
-| :-------------: | :------: | :-----: | :-----: | :-----: |
-| LongRoPE-LLaMA2-2048k | 100% | 100% | 100% | 60% |
-| LongRoPE-Mistral-2048k | 100% | 90% | 90% | 90% |
-
-
-## Use LongRoPE to Extend Content Window
+## Quick Start
 
 ### Build Environment
 
 ``` bash
-conda create -n longrope python==3.11
+conda create -n longrope python==3.10
 conda activate longrope
 # flash-attn needs cuda >= 11.7
 pip install -r requirements.txt
@@ -80,15 +90,15 @@ pip install -r requirements.txt
 Tokenize PG19 as evolution search validation dataset and Proof-Pile as evaluation dataset.
 
 ```bash
-bash ./examples/llama2/tokenzie-data.sh
+bash ./examples/llama3/tokenzie-data.sh
 ```
 
 ### Evolution Search
 
-Run evoluation search for Llama2-7b (4k) to sequence length of 128k:
+Run evoluation search on Llama-3-8B model to sequence length of 128k:
 
 ``` bash
-bash ./examples/llama2/search.sh
+bash ./examples/llama3/search.sh
 ```
 
 The default evolution search hyperparameters are located in `evolution/default_hyper_params/*.json`. Users can customize the number of iterations, population size, number of parents, number of mutation and crossover operations in each iteration. These parameters will affect the convergence time and robustness of searching results.
@@ -96,18 +106,9 @@ The default evolution search hyperparameters are located in `evolution/default_h
 ### Evaluation
 Evaluate long-context perplexity and passkey accuracy:
 ``` bash
-bash ./examples/llama2/evaluate.sh
+bash ./examples/llama3/evaluate.sh
 ```
 
-
-## Others
-
-There are some potential limitations of LongRoPE, such as:
-- High GPU memory occupation: The LongRoPE pipeline includes long context inference and training which requires more GPU memory for activations and gradients. The users can apply memory-saving technics such as tensor parallel, ZeRO offloading and recomputation.
-- Low generation throughput:  The generation throughput may be limited by (1) the high memory requirement to open K / V caches and (2) the long latency of attention operation for a new token with long context window. The users can parallelize, quantize and / or prune K / V caches to accelerate long-context generation.
-- As we prepare to release the code for LLMs, there indeed exists the possibility of unintentional misuse. For instance:
-  - Misuse by non-professional users: Individuals who are not familiar with the code or are beginners may not fully comprehend how to use it, leading to its inability to function properly and potential misuse.
-  - Usage in non-designed environments: We have only tested the code in English environments. If the code is utilized in operational environments for which it was not designed, such as Chinese environments, it could yield unexpected results.
 
 ## Citation
 

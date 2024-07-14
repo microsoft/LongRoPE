@@ -16,7 +16,7 @@ import numpy as np
 import transformers
 
 sys.path.append(os.path.join(os.path.split(__file__)[0], os.path.pardir))
-from rope import LlamaYaRNScaledRotaryEmbedding
+from rope import YaRNScaledRotaryEmbedding
 from evolution.algorithms import Evaluator, DimMonoGeneticAlgorithm, DimPieceMonoGeneticAlgorithm
 
 
@@ -52,7 +52,7 @@ def select_init_factors(
     while target_scale >= 1:
         logger.info(f'Try init factors at scale={target_scale}')
         tmp_rope_args = {
-            'rope_class': 'LlamaLongRoPEScaledRotaryEmbedding',
+            'rope_class': 'LongRoPEScaledRotaryEmbedding',
             'rescale_factors': rescale(target_scale, length_scale, init_factors),
             'max_position_embeddings': int(target_scale * rope_args['original_max_position_embeddings']),
             **rope_args,
@@ -163,7 +163,7 @@ def main(args):
                 'beta_fast': 32,
                 'beta_slow': 1,
             }
-        emb = LlamaYaRNScaledRotaryEmbedding(**rope_args, **yarn_betas)
+        emb = YaRNScaledRotaryEmbedding(**rope_args, **yarn_betas)
         inv_freq_mask = emb.inv_freq_mask
         inv_freq_interpolation = length_scale
         inv_freq_extrapolation = 1.0

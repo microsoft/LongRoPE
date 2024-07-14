@@ -7,9 +7,8 @@ import numpy as np
 
 from transformers import AutoConfig, AutoModelForCausalLM
 
-from .longrope import LlamaLongRoPEScaledRotaryEmbedding, LlamaDynamicLongRoPEScaledRotaryEmbedding, LlamaMixedLongRoPEScaledRotaryEmbedding
-from .yarn import LlamaYaRNScaledRotaryEmbedding, LlamaDynamicYaRNScaledRotaryEmbedding
-from .ntk import LlamaNTKScaledRotaryEmbedding, LlamaDynamicNTKScalingRotaryEmbedding
+from .longrope import LongRoPEScaledRotaryEmbedding, MixedLongRoPEScaledRotaryEmbedding, DynamicLongRoPEScaledRotaryEmbedding
+from .yarn import YaRNScaledRotaryEmbedding
 from utils.save_memory import replace_methods
 
 
@@ -141,11 +140,8 @@ def load_model(
             'base': getattr(config, 'rope_embedding_base', getattr(config, 'rope_theta', None)),
             'model_type': rope_model_type,
         }
-        if rope_method.startswith('yarn'):
-            if rope_method == 'yarn':
-                rope_class = LlamaYaRNScaledRotaryEmbedding
-            elif rope_method == 'yarn_dynamic':
-                rope_class = LlamaDynamicYaRNScaledRotaryEmbedding
+        if rope_method == 'yarn':
+            rope_class = YaRNScaledRotaryEmbedding
         elif rope_method.startswith('longrope'):
             rescale_factors = np.loadtxt(open(rope_params['longrope_params_path'], 'rb'), delimiter=',', skiprows=0)
             if rescale_factors.shape == (half_head_size, ):
@@ -155,20 +151,17 @@ def load_model(
             rope_args['rescale_factors'] = rescale_factors
             rope_args['magnitude_scaling_policy'] = rope_params['longrope_scaling_policy']
             if rope_method == 'longrope':
-                rope_class = LlamaLongRoPEScaledRotaryEmbedding
+                rope_class = LongRoPEScaledRotaryEmbedding
             elif rope_method == 'longrope_mixed':
-                rope_class = LlamaMixedLongRoPEScaledRotaryEmbedding
-                rope_args['original_embeddings'] = original_embeddings
+                rope_class = MixedLongRoPEScaledRotaryEmbedding
+                # TODO: use hook to get the original embeddings
                 original_rope = model.model.layers[0].self_attn.rotary_emb
-                tmp_input = torch.zeros(
-                    size=(max_position_embeddings, ),
-                    dtype=config.torch_dtype,
-                    device=original_rope.inv_freq.device,
-                )
+                tmp_input = torch.zeros(size=(max_position_embeddings, ))
                 original_embeddings = original_rope(tmp_input)
                 rope_args['start_token_idx'] = rope_params['start_token_idx']
+                rope_args['original_embeddings'] = original_embeddings
             elif rope_method == 'longrope_dynamic':
-                rope_class = LlamaDynamicLongRoPEScaledRotaryEmbedding
+                rope_class = DynamicLongRoPEScaledRotaryEmbedding
         if rope_class is None:
             raise ValueError(f'Unsupported RoPE method: {rope_method}')
         logger.info(f'[RoPE Args]{rope_args}')

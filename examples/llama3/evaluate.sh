@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Evaluate Perplexity on Proof-Pile test dataset and Passkey on Llama-2-7b model with LongRoPE rescale factors.
+# Evaluate Perplexity on Proof-Pile test dataset and Passkey on Llama-3-8B model with LongRoPE rescale factors.
 
 export CUDA_VISIBLE_DEVICES=0
 
 export TARGET_LENGTH=$((32 * 1024))
-MODEL_PATH=meta-llama/Llama-2-7b-hf
+MODEL_PATH=meta-llama/Meta-Llama-3-8B
 DATASETS_PATH=$(pwd)/datasets
 
 export ROPE_METHOD=longrope
-export LONGROPE_RESCALE_FACTOR=$(pwd)/results/search/llama2-7b/$TARGET_LENGTH/result_final.csv
+export LONGROPE_RESCALE_FACTOR=$(pwd)/results/search/llama3-8b/$TARGET_LENGTH/result_final.csv
 export LONGROPE_SCALING_POLICY=su
 
-export OUTPUT_DIR=$(pwd)/results/eval/llama2-7b/$TARGET_LENGTH
+export OUTPUT_DIR=$(pwd)/results/eval/llama3-8b/$TARGET_LENGTH
 mkdir -p $OUTPUT_DIR
 
 # For finetuned model, LongRoPE rescale factor is compatible for shorter input lengths.

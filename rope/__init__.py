@@ -123,7 +123,7 @@ def load_model(
     )
 
     if save_memory:
-        replace_methods(model)
+        replace_methods(model, model.config.model_type)
 
     if need_replace_rope:
         if config.model_type == 'mistral' or config.model_type == 'mixtral':

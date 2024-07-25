@@ -10,7 +10,7 @@ from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutpu
 logger = logging.getLogger(__name__)
 
 
-def forward_llama_for_causal_lm(
+def forward_mistral_for_causal_lm(
     self,
     input_ids: torch.LongTensor = None,
     attention_mask: Optional[torch.Tensor] = None,
@@ -22,7 +22,6 @@ def forward_llama_for_causal_lm(
     output_attentions: Optional[bool] = None,
     output_hidden_states: Optional[bool] = None,
     return_dict: Optional[bool] = None,
-    cache_position: Optional[torch.LongTensor] = None,
 ) -> Union[Tuple, CausalLMOutputWithPast]:
     output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
     output_hidden_states = (
@@ -41,7 +40,6 @@ def forward_llama_for_causal_lm(
         output_attentions=output_attentions,
         output_hidden_states=output_hidden_states,
         return_dict=return_dict,
-        cache_position=cache_position,
     )
     torch.cuda.empty_cache()
 
@@ -67,10 +65,16 @@ def forward_llama_for_causal_lm(
             loss += loss_fct(shift_logits, shift_labels)
         loss /= valid_seq_len_slide_win
 
-    return CausalLMOutputWithPast(logits=logits, loss=loss)
+    return CausalLMOutputWithPast(
+        loss=loss,
+        logits=logits,
+        past_key_values=outputs.past_key_values,
+        hidden_states=outputs.hidden_states,
+        attentions=outputs.attentions,
+    )
 
 
-def forward_llama_model(
+def forward_mistral_model(
     self,
     input_ids: torch.LongTensor = None,
     attention_mask: Optional[torch.Tensor] = None,
@@ -81,7 +85,6 @@ def forward_llama_model(
     output_attentions: Optional[bool] = None,
     output_hidden_states: Optional[bool] = None,
     return_dict: Optional[bool] = None,
-    cache_position: Optional[torch.LongTensor] = None,
 ) -> Union[Tuple, BaseModelOutputWithPast]:
     assert not output_attentions
     assert not output_hidden_states
@@ -90,42 +93,51 @@ def forward_llama_model(
 
     return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-    if (input_ids is None) ^ (inputs_embeds is not None):
-        raise ValueError(
-            "You cannot specify both input_ids and inputs_embeds at the same time, and must specify either one"
+    # retrieve input_ids and inputs_embeds
+    if input_ids is not None and inputs_embeds is not None:
+        raise ValueError("You cannot specify both decoder_input_ids and decoder_inputs_embeds at the same time")
+    elif input_ids is not None:
+        batch_size, seq_length = input_ids.shape
+    elif inputs_embeds is not None:
+        batch_size, seq_length, _ = inputs_embeds.shape
+    else:
+        raise ValueError("You have to specify either decoder_input_ids or decoder_inputs_embeds")
+
+    past_key_values_length = 0
+
+    if position_ids is None:
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        position_ids = torch.arange(
+            past_key_values_length, seq_length + past_key_values_length, dtype=torch.long, device=device
         )
+        position_ids = position_ids.unsqueeze(0).view(-1, seq_length)
+    else:
+        position_ids = position_ids.view(-1, seq_length).long()
 
     if inputs_embeds is None:
         inputs_embeds = self.embed_tokens(input_ids)
 
-    if cache_position is None:
-        past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
-        cache_position = torch.arange(
-            past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device
-        )
-    if position_ids is None:
-        position_ids = cache_position.unsqueeze(0)
+    if self._attn_implementation == "flash_attention_2":
+        # 2d mask is passed through the layers
+        attention_mask = attention_mask if (attention_mask is not None and 0 in attention_mask) else None
+    else:
+        raise ValueError("attn_implementation should be `flash_attention_2`")
 
-    causal_mask = self._update_causal_mask(
-        attention_mask, inputs_embeds, cache_position, past_key_values, output_attentions
-    )
-
-    # embed positions
     hidden_states = inputs_embeds
 
     # decoder layers
     all_hidden_states = None
     all_self_attns = None
+    next_decoder_cache = None
 
     for decoder_layer in self.layers:
         layer_outputs = decoder_layer(
             hidden_states,
-            attention_mask=causal_mask,
+            attention_mask=attention_mask,
             position_ids=position_ids,
             past_key_value=past_key_values,
             output_attentions=output_attentions,
             use_cache=use_cache,
-            cache_position=cache_position,
         )
         hidden_states = layer_outputs[0]
 

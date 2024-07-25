@@ -36,7 +36,7 @@ def compute_perplexity(
     r"""Compute "sliding window" perplexity on a dataset. Validated against the calculations reported in arXiv 2306.15595  """
 
     if save_memory:
-        replace_methods(model)
+        replace_methods(model, model.config.model_type)
 
     if add_start_token:
         # leave room for <BOS> token to be added:

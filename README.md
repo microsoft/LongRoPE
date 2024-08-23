@@ -1,4 +1,4 @@
-# LongRoPE
+# LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens
  
 **LongRoPE** is an effective approach that extends LLM context window beyond 2048k tokens by non-uniformly rescaling RoPE positional embeddings. LongRoPE is accepted by ICML 2024 and has been integrated into Microsoft Phi-3. Learn more about the work [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://arxiv.org/pdf/2402.13753):
 

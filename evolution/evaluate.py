@@ -33,7 +33,7 @@ def main(args):
     logger.info(f"Loading tokenized dataset: {args.tokenized}")
     dataset = datasets.load_from_disk(args.tokenized)
     if args.dataset_min_tokens:
-        dataset = dataset.filter(lambda x: x["tokenized_len"] >= args.dataset_min_tokens, num_proc=args.num_proc)
+        dataset = dataset.filter(lambda x: x["tokenized_len"] >= args.dataset_min_tokens if "tokenized_len" in x else len(x["input_ids"]) >= args.dataset_min_tokens, num_proc=args.num_proc)
     if args.samples:
         dataset = dataset[:args.samples]
 
@@ -44,11 +44,11 @@ def main(args):
         'max_position_embeddings': target_length,
         'attn_implementation': args.attn_implementation,
         'attn_sliding_window': args.attn_sliding_window,
-        'torch_dtype': torch.float16,
+        'torch_dtype': torch.bfloat16,
         'device_map': 'auto',
         'save_memory': False,
     }
-    torch.set_default_dtype(torch.float16)
+    torch.set_default_dtype(torch.bfloat16)
     model = rope.load_model(model_name_or_path=args.model, **model_args)
     sock.send(json.dumps({'model_ready': True}).encode())
 

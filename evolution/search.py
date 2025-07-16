@@ -143,39 +143,58 @@ def main(args):
     set_seed()
 
     if args.hyper_params is None:
-        hyper_params_path = os.path.join(os.path.split(__file__)[0], 'default_hyper_params', f'{args.algorithm}.json')
+        hyper_params_path = os.path.join(os.path.split(__file__)[0], 'default_hyper_params', f'{args.algorithm}{"_mscale" if args.rope_searched_arg_name == "mscale_factors" else ""}.json')
     else:
         hyper_params_path = args.hyper_params
     logger.info(f'Load hyper-parameters from {hyper_params_path}')
     with open(hyper_params_path) as f:
         hyper_params = json.loads(f.read())
 
-    if args.init_factors is None:
-        logger.info(f'Generate initial factors by YaRN')
-        # TODO: check YaRN settings for more models
-        if args.yarn_settings == 'mistral' or config.model_type == 'mistral':
-            yarn_betas = {
-                'beta_fast': 128,
-                'beta_slow': 2,
-            }
+    if args.rope_searched_arg_name == "rescale_factors":
+        if args.init_factors is None:
+            logger.info(f'Generate initial factors by YaRN')
+            # TODO: check YaRN settings for more models
+            if args.yarn_settings == 'mistral' or config.model_type == 'mistral':
+                yarn_betas = {
+                    'beta_fast': 128,
+                    'beta_slow': 2,
+                }
+            else:
+                yarn_betas = {
+                    'beta_fast': 32,
+                    'beta_slow': 1,
+                }
+            emb = YaRNScaledRotaryEmbedding(**rope_args, **yarn_betas)
+            inv_freq_mask = emb.inv_freq_mask
+            inv_freq_interpolation = length_scale
+            inv_freq_extrapolation = 1.0
+            inv_freq = inv_freq_interpolation * (1 - inv_freq_mask) + inv_freq_extrapolation * inv_freq_mask
+            init_factors = inv_freq.detach().cpu().numpy().flatten()
         else:
-            yarn_betas = {
-                'beta_fast': 32,
-                'beta_slow': 1,
-            }
-        emb = YaRNScaledRotaryEmbedding(**rope_args, **yarn_betas)
-        inv_freq_mask = emb.inv_freq_mask
-        inv_freq_interpolation = length_scale
-        inv_freq_extrapolation = 1.0
-        inv_freq = inv_freq_interpolation * (1 - inv_freq_mask) + inv_freq_extrapolation * inv_freq_mask
-        init_factors = inv_freq.detach().cpu().numpy().flatten()
+            # TODO: search mscale (attention temperature)
+            logger.info(f'Load initial factors from {args.init_factors}')
+            init_factors = np.loadtxt(open(args.init_factors, "rb"), delimiter=",", skiprows=0)
+            if args.auto_rescale_init_factors:
+                init_factors, length_scale = select_init_factors(evaluators[0], init_factors, length_scale, rope_args)
+                rope_args['max_position_embeddings'] = int(length_scale * original_length)
+        
+        if args.critical_dim is not None:
+            critical_dim = args.critical_dim
+        else:
+            critical_dim = math.ceil(math.log(original_length / 2 / math.pi, rope_base) * head_size / 2) - 1
+        critical_dim_min_scale = target_length / original_length
+        dim_search_space = [(1.0, critical_dim_min_scale + length_scale / 8)] * critical_dim + [(critical_dim_min_scale, length_scale)] * (head_size // 2 - critical_dim)
+        if args.init_mscales is not None:
+            rope_args['mscale_factors'] = np.loadtxt(open(args.init_mscales, "rb"), delimiter=",", skiprows=0).tolist()
     else:
-        # TODO: search mscale (attention temperature)
-        logger.info(f'Load initial factors from {args.init_factors}')
-        init_factors = np.loadtxt(open(args.init_factors, "rb"), delimiter=",", skiprows=0)
-        if args.auto_rescale_init_factors:
-            init_factors, length_scale = select_init_factors(evaluators[0], init_factors, length_scale, rope_args)
-            rope_args['max_position_embeddings'] = int(length_scale * original_length)
+        assert args.rope_searched_arg_name == "mscale_factors", "Only support search rescale_factors and mscale_factors."
+        assert args.init_factors is not None, "Before searching mscales, must give a group rescale factors at first for current version."
+        assert args.init_mscales is not None, "Must give a group of init mscales for current version."
+        assert not args.auto_rescale_init_factors
+        logger.info(f'Load initial mscale factors from {args.init_mscales}')
+        init_factors = np.loadtxt(open(args.init_mscales, "rb"), delimiter=",", skiprows=0)
+        rope_args['rescale_factors'] = np.loadtxt(open(args.init_factors, "rb"), delimiter=",", skiprows=0).tolist()
+        dim_search_space = [(1.0, length_scale)] * (head_size // 2)
     assert init_factors.shape == (half_head_size, ), \
         f'Initial factors shape error: {init_factors.shape} != {(half_head_size, )}'
     logger.info(f'Initial factors: {init_factors}')
@@ -191,6 +210,9 @@ def main(args):
             log_json_path=os.path.join(args.output_dir, f'log-{args.timestamp}.json'),
             output_dir=args.output_dir,
             recovery=args.recovery,
+            rope_searched_arg_name=args.rope_searched_arg_name,
+            dim_search_space=dim_search_space,
+            critical_dim=critical_dim
         ).run_genetic_algorithm()[2:]
     elif args.algorithm == "dim_mono":
         final_factors = DimMonoGeneticAlgorithm(
@@ -203,6 +225,9 @@ def main(args):
             log_json_path=os.path.join(args.output_dir, f'log-{args.timestamp}.json'),
             output_dir=args.output_dir,
             recovery=args.recovery,
+            rope_searched_arg_name=args.rope_searched_arg_name,
+            dim_search_space=dim_search_space,
+            critical_dim=critical_dim
         ).run_genetic_algorithm()
     else:
         raise ValueError(f'Unsupported evolution search algorithm: {args.algorithm}')
@@ -242,6 +267,9 @@ if __name__ == "__main__":
     parser.add_argument("--save-memory", action="store_true")
     parser.add_argument("--model-size-gb", type=float, default=14)
     parser.add_argument("--devices", type=str, default=None)
+    parser.add_argument("--init-mscales", type=str, default=None)
+    parser.add_argument("--rope-searched-arg-name", type=str, default="rescale_factors")  # ["mscale_factors", "rescale_factors"]
+    parser.add_argument("--critical-dim", type=int, default=None)
     args = parser.parse_args()
     args.timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 

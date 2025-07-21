@@ -123,6 +123,7 @@ class GeneticAlgorithm:
     Args:
         evaluators (list[Evaluator]): List of evaluators used to evaluate individuals.
         scale (float): Length scale.
+        init_scale (float): Initial scale for the factors.
         target_length (int): Target sequence length.
         hyper_params (dict[str, float]): Hyperparameters for the genetic algorithm.
         init_factors (np.ndarray): Initial LongRoPE rescale factors.
@@ -136,6 +137,7 @@ class GeneticAlgorithm:
         self,
         evaluators: list[Evaluator],
         scale: float,
+        init_scale: float,
         target_length: int,
         hyper_params: dict[str, float],
         init_factors: np.ndarray,
@@ -148,7 +150,9 @@ class GeneticAlgorithm:
         critical_dim: int = None
     ):
         self.queue = EvaluatorQueue(evaluators)
+        assert scale >= init_scale, f'Scale ({scale}) should be larger than initial scale ({init_scale})'
         self.scale = scale
+        self.init_scale = init_scale
         self.target_length = target_length
 
         self.history: list[Individual] = []
@@ -244,16 +248,18 @@ class GeneticAlgorithm:
             latest_iteration = 0
             pbar = tqdm(range(self.population_size * 2), desc=f'Generate Initial Population')
             for i in pbar:
-                total_dim, cd_dim, init_scale = self.init_factors.shape[0], self.critical_dim, self.scale
+                total_dim, cd_dim = self.init_factors.shape[0], self.critical_dim
                 def ntk_init(total_dim, cd_dim, scale):
                     ext = scale ** (total_dim / cd_dim)
                     return [ext ** (i / total_dim) for i in range(cd_dim)] + [scale + 0.1 * i for i in range(total_dim - cd_dim)]
 
-                scale_step, scale_step_size = 8, init_scale / 8
-                if i < scale_step:
-                    new_indv = self.make_indv(np.array(ntk_init(total_dim, cd_dim, init_scale + i * scale_step_size)))
+                # Initialize the first few individuals with different init scale values using NTK initialization,
+                # the scale is increased gradually.
+                init_scale_step, init_scale_step_size = 8, (self.scale - self.init_scale) / 8
+                if i < init_scale_step:
+                    new_indv = self.make_indv(np.array(ntk_init(total_dim, cd_dim, self.init_scale + i * init_scale_step_size)))
                 else:
-                    new_indv = self.mutate(population[i-scale_step])
+                    new_indv = self.mutate(population[i-init_scale_step])
                 population.append(new_indv)
                 self.history.append(new_indv)
                 if new_indv.ppl is not None:

@@ -7,7 +7,7 @@ RESULT_PATH=
 INIT_FACTORS_PATH=fake-llama3-ntk-cd-init-128k.csv
 mkdir -p $RESULT_PATH
 TARGET_LENGTH=131072
-LENGTH_SCALE=16
+LENGTH_SCALE=32
 CRITICAL_DIM=33
 
 python evolution/search.py \

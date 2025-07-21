@@ -122,7 +122,8 @@ def main(args):
         original_length = config.sliding_window
     else:
         original_length = config.max_position_embeddings
-    length_scale = target_length / original_length if args.length_scale is None else args.length_scale
+    init_scale = target_length / original_length
+    length_scale = init_scale if args.length_scale is None else args.length_scale
     rope_base = getattr(config, 'rope_embedding_base', getattr(config, 'rope_theta', None))
     if config.model_type == 'mistral' or config.model_type == 'mixtral':
         rope_model_type = 'mistral'
@@ -203,6 +204,7 @@ def main(args):
         final_factors = DimPieceMonoGeneticAlgorithm(
             evaluators=evaluators,
             scale=length_scale,
+            init_scale=init_scale,
             target_length=target_length,
             hyper_params=hyper_params,
             init_factors=init_factors,
@@ -218,6 +220,7 @@ def main(args):
         final_factors = DimMonoGeneticAlgorithm(
             evaluators=evaluators,
             scale=length_scale,
+            init_scale=init_scale,
             target_length=target_length,
             hyper_params=hyper_params,
             init_factors=init_factors,

@@ -15,6 +15,11 @@
     <a href="https://www.microsoft.com/en-us/research/blog/research-focus-week-of-march-18-2024/">Microsoft Research Blog</a>
 </p>
 
+## News
+
+  * **[2025/02/27]** "LongRoPE2: Near-Lossless LLM Context Window Scaling" is now available [paper](https://arxiv.org/abs/2502.20082), [code](https://github.com/microsoft/LongRoPE/tree/longrope2).
+
+
 ## LongRoPE in Phi3-128k LLMs
 LongRoPE currently supports the following Phi3-128k LLMs with 128k context window.
 
@@ -112,7 +117,7 @@ bash ./examples/llama3/evaluate.sh
 
 ## Citation
 
-If you find that LongRoPE helps your research, please consider citing it:
+If you find that LongRoPE/LongRoPE2 helps your research, please consider citing it:
 ```
 @misc{ding2024longrope,
       title={LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens}, 
@@ -121,5 +126,15 @@ If you find that LongRoPE helps your research, please consider citing it:
       eprint={2402.13753},
       archivePrefix={arXiv},
       primaryClass={cs.CL}
+}
+
+@misc{shang2025longrope2nearlosslessllmcontext,
+      title={LongRoPE2: Near-Lossless LLM Context Window Scaling}, 
+      author={Ning Shang and Li Lyna Zhang and Siyuan Wang and Gaokai Zhang and Gilsinia Lopez and Fan Yang and Weizhu Chen and Mao Yang},
+      year={2025},
+      eprint={2502.20082},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2502.20082}, 
 }
 ```

@@ -2,17 +2,20 @@
 
 `LongRoPE2` is a novel approach that extends the effective context window of pre-trained LLMs to a target length (e.g., 128k) while **preserving the model's original performance on short-context tasks**.
 
-While our previous work, [LongRoPE](https://github.com/microsoft/LongRoPE), successfully extended context windows to 2048k, it faced a common challenge among extension methods: a noticeable performance degradation on standard short-context benchmarks.
+<p align="center">
+  <img src="assets/logo.png" width="500px">
+</p>
+<p align="center">
+    🤗 <a href="https://huggingface.co/papers/2502.20082">Huggingface Daily Paper</a>
+</p>
 
-`LongRoPE2` directly solves this "near-lossless" challenge through three key contributions:
+While our previous work, [LongRoPE](https://github.com/microsoft/LongRoPE), successfully extended context windows to 2048k, it faced a common challenge among extension methods: a noticeable performance degradation on standard short-context benchmarks. `LongRoPE2` directly solves this "near-lossless" challenge through three key contributions:
 
 1.  **A new hypothesis** on RoPE OOD issues, identifying insufficient training in higher RoPE dimensions as the root cause.
 2.  **An evolutionary search algorithm** guided by "needle-driven" perplexity to find the *true* critical RoPE dimensions and optimal rescaling factors.
 3.  **A mixed context window training approach** that simultaneously fine-tunes the model with original RoPE for short sequences and the rescaled RoPE for long sequences, preserving performance across all context lengths.
 
 Remarkably, `LongRoPE2` extends LLaMA3-8B to an effective 128K context length while **retaining over 98.5% of its original short-context performance**. This is achieved using only 10B training tokens—**80x fewer** than Meta's LLaMA3.1 approach.
-
-*LongRoPE2-extended LLaMA3-8B achieves the best performance at a 128k context length among comparable models.*
 
 ## Key Features
 
@@ -21,10 +24,6 @@ Remarkably, `LongRoPE2` extends LLaMA3-8B to an effective 128K context length wh
   * **Extreme Training Efficiency**: Requires only 10B tokens for fine-tuning, 80x fewer than comparable models like LLaMA3.1-8B.
   * **Solves RoPE OOD Issues**: Identifies and corrects for undertraining in high-frequency RoPE dimensions, leading to a more robust extension.
   * **Flexible Inference**: Uses the original RoPE for short-context inputs and automatically switches to the rescaled RoPE for long-context inputs, ensuring optimal performance for any sequence length.
-
-## News
-
-  * **[2025/02/27]** Our paper, "LongRoPE2: Near-Lossless LLM Context Window Scaling," is now available on [arXiv](https://arxiv.org/abs/2502.20082).
 
 -----
 
@@ -62,6 +61,7 @@ The `LongRoPE2` method consists of two main stages:
 Please note that this branch is a dev branch, please view the following scripts for more information.
 
 The needle data generation example for llama3: [pg19_needle_llama3.py](https://github.com/microsoft/LongRoPE/blob/longrope2/examples/longrope2/pg19_needle_llama3.py)
+
 The evolutionary search example for llama3: [search-llama3-long-factor-cd-33-around-init.sh](https://github.com/microsoft/LongRoPE/blob/longrope2/examples/longrope2/search-llama3-long-factor-cd-33-around-init.sh)
 
 *This step generates the scaling factors, which minimize PPL on synthetic "needle-driven" data.*

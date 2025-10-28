@@ -1,125 +1,122 @@
-# LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens
- 
-**LongRoPE** is an effective approach that extends LLM context window beyond 2048k tokens by non-uniformly rescaling RoPE positional embeddings. LongRoPE is accepted by ICML 2024 and has been integrated into Microsoft Phi-3. Learn more about the work [LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens](https://arxiv.org/pdf/2402.13753):
+# LongRoPE2: Near-Lossless LLM Context Window Scaling
 
-<p align="center">
-  <img src="assets/logo.png" width="500px">
-</p>
-<p align="center">
-    🤗 <a href="https://huggingface.co/papers/2402.13753">Huggingface Daily Paper</a>
-</p>
-<p align="center">
-    <a href="https://mp.weixin.qq.com/s/4ryyv59ofNOD--RCSdqktQ">Microsoft Research Official Blog</a>
-</p>
-<p align="center">
-    <a href="https://www.microsoft.com/en-us/research/blog/research-focus-week-of-march-18-2024/">Microsoft Research Blog</a>
-</p>
+`LongRoPE2` is a novel approach that extends the effective context window of pre-trained LLMs to a target length (e.g., 128k) while **preserving the model's original performance on short-context tasks**.
 
-## LongRoPE in Phi3-128k LLMs
-LongRoPE currently supports the following Phi3-128k LLMs with 128k context window.
+While our previous work, [LongRoPE](https://github.com/microsoft/LongRoPE), successfully extended context windows to 2048k, it faced a common challenge among extension methods: a noticeable performance degradation on standard short-context benchmarks.
 
-- [Phi-3-mini-128k-instruct](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
-- [Phi-3-small-128k-instruct](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
-- [Phi-3-medium-128k-instruct](https://huggingface.co/microsoft/Phi-3-medium-128k-instruct)
-- [Phi-3-vision-128k-instruct](https://huggingface.co/microsoft/Phi-3-vision-128k-instruct)
+`LongRoPE2` directly solves this "near-lossless" challenge through three key contributions:
 
-### [RULER](https://github.com/hsiehjackson/RULER)
-| Model | Context Window | 4k | 8k | 16k | 32k | 64k | 128k | Avg |
-| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| Gemini-1.5-pro | 1M | 96.7 | 95.8 | 96 | 95.9 | 95.9 | 94.4 | 95.8 |
-| GPT-4-1106-preview | 128k | 96.6 | 96.3 | 95.2 | 93.2 | 87 | 81.2 | 91.6 |
-| GradientAI/LLaMA3 (70B) | 1M | 95.2 | 93.4 | 93.4 | 89.4 | 82.6 | 72 | 87.7 |
-| **Phi3-mini-128k (3.8B)** | **128k** | **92.3** | **91.2** | **90.8** | **87.7** | **79.8** | **65.3** | **84.5** |
-| Mixtral-8x22B | 64k | 95.6 | 94.9 | 93.4 | 90.9 | 84.7 | 31.7 | 81.9 |
-| ChatGLM (6B) | 128k | 87.8 | 83.4 | 78.6 | 69.9 | 56.0 | 42.0 | 69.6 |
-| LongChat (7B) | 32k | 84.7 | 79.9 | 70.8 | 59.3 | 0 | 0 | 49.1 |
+1.  **A new hypothesis** on RoPE OOD issues, identifying insufficient training in higher RoPE dimensions as the root cause.
+2.  **An evolutionary search algorithm** guided by "needle-driven" perplexity to find the *true* critical RoPE dimensions and optimal rescaling factors.
+3.  **A mixed context window training approach** that simultaneously fine-tunes the model with original RoPE for short sequences and the rescaled RoPE for long sequences, preserving performance across all context lengths.
 
-### Long context code understanding ([RepoQA](https://github.com/evalplus/repoqa))
-| Model | Context Window | Python | cpp | java | typescript | rust | avg |
-| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| GPT-4o-2024-05-13 | 128k | 95 | 80 | 85 | 96 | 97 | 90.6 |
-| Gemini-1.5-pro-latest | 1M | 91 | 81 | 91 | 94 | 96 | 90.6 |
-| claude-3-opus-20240229 | 200k | 93 | 83 | 88 | 95 | 94 | 90.6 |
-| **Phi3-mini-128k-Instruct** | **128k** | **86** | **64** | **73** | **94** | **71** | **77.6** |
-| GPT-4-turbo-2024-04-09 | 128k | 84 | 79 | 75 | 89 | 55 | 76.4 |
-| Mixtral-8x22B-Instruct-v0.1 | 64k | 60 | 67 | 74 | 83 | 55 | 67.8 |
+Remarkably, `LongRoPE2` extends LLaMA3-8B to an effective 128K context length while **retaining over 98.5% of its original short-context performance**. This is achieved using only 10B training tokens—**80x fewer** than Meta's LLaMA3.1 approach.
 
-###  More short tasks
-| Model | MMLU | GSM8K | MedQA | AGIEval | BBH-Hard | HumanEval |
-| :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| **Phi3-mini-128k-Instruct** | **68.1** | **83.6** | **55.3** | **36.9** | **71.5** | **57.9** |
-| Mistral-7B | 61.7 | 46.4 | 49.6 | 35.1 | 57.3 | 28 |
-| Gemma 7B | 63.6 | 59.8 | 50 | 42.1 | 59.6 | 34.1 |
-| LLaMA3-Instruct-8B | 66.5 | 77.4 | 60.5 | 42 | 51.5 | 60.4 |
-| Mixtral 8x7B | 68.4 | 64.7 | 62.2 | 45.2 | 69.7 | 37.8 |
+*LongRoPE2-extended LLaMA3-8B achieves the best performance at a 128k context length among comparable models.*
 
-### Multi-modality long context support
-| Model | MMMU | MMBench | ScienceQA | MathVista | InterGPS | ChartQA |
-| :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| **Phi3-vision 128k-instruct** | **40.4** | **80.5** | **90.8** | **44.5** | **38.1** | **81.4** |
-| LLaVA 1.6-vicuna-7B | 34.2 | 76.3 | 70.6 | 31.5 | 20.5 | 55.0 |
-| QWEN-VL Chat | 39.0 | 75.8 | 67.2 | 29.4 | 22.3 | 50.9 |
-| LLaMA3-LLaVA Next-8B | 36.4 | 79.4 | 73.7 | 34.8 | 24.6 | 65.8 |
-| Claude-3-Haiku | 40.7 | 62.4 | 72.0 | 33.2 | 32.1 | 59.3 |
-| Gemini 1.0 Pro V | 42.0 | 80.0 | 79.7 | 35.0 | 28.6 | 58.0 |
-| GPT-4V Turbo | 55.5 | 86.1 | 75.7 | 47.5 | 41.0 | 62.3 |
+## Key Features
 
-## What does LongRoPE do?
+  * **Near-Lossless Short Context Performance**: Retains \>98.5% of the original model's performance on standard short-context benchmarks (e.g., MMLU, GSM8K).
+  * **Superior Long Context Performance**: Achieves state-of-the-art results on long-context benchmarks like RULER and achieves near-perfect retrieval on "Needle in a Haystack" tests up to 128k.
+  * **Extreme Training Efficiency**: Requires only 10B tokens for fine-tuning, 80x fewer than comparable models like LLaMA3.1-8B.
+  * **Solves RoPE OOD Issues**: Identifies and corrects for undertraining in high-frequency RoPE dimensions, leading to a more robust extension.
+  * **Flexible Inference**: Uses the original RoPE for short-context inputs and automatically switches to the rescaled RoPE for long-context inputs, ensuring optimal performance for any sequence length.
 
-The LongRoPE algorithm is built upon the two forms of non-uniformities in positional interpolation: varying RoPE dimensions and token positions. In order to achieve the best performance on long context windows using non-uniform positional embeddings, LongRoPE:
-- Exploit the best positional embedding rescaling parameters through an efficient search, providing a better initialization for fine-tuning and enabling an 8x extension in non-fine-tuning scenarios;
-- Introduce a progressive extension strategy that first fine-tunes a 256k length LLM and then conducts a second positional interpolation on the fine-tuned extended LLM to achieve a 2048k context window;
-- Readjust scaling factors and retained start tokens on 8k length to recover the short context window performance.
+## News
 
-Due to policy restrictions, only evolution search part is now released. Any LLM training techniques such as [EasyContext](https://github.com/jzhang38/EasyContext) and [nnScaler](https://github.com/microsoft/nnscaler) can be applied to the fine-tuning stage.
+  * **[2025/02/27]** Our paper, "LongRoPE2: Near-Lossless LLM Context Window Scaling," is now available on [arXiv](https://arxiv.org/abs/2502.20082).
 
+-----
 
-## Quick Start
+## Installation
 
-### Build Environment
+1.  Clone this repository:
 
-``` bash
-conda create -n longrope python==3.10
-conda activate longrope
-# flash-attn needs cuda >= 11.7
-pip install -r requirements.txt
-```
+    ```bash
+    git clone https://github.com/microsoft/LongRoPE -b longrope2
+    cd LongRoPE
+    ```
 
-### Tokenize Data
+2.  Create and activate a Conda environment:
 
-Tokenize PG19 as evolution search validation dataset and Proof-Pile as evaluation dataset.
+    ```bash
+    conda create -n longrope2 python=3.10
+    conda activate longrope2
+    ```
 
-```bash
-bash ./examples/llama3/tokenzie-data.sh
-```
+3.  Install the required dependencies:
 
-### Evolution Search
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-Run evoluation search on Llama-3-8B model to sequence length of 128k:
+## Usage
 
-``` bash
-bash ./examples/llama3/search.sh
-```
+The `LongRoPE2` method consists of two main stages:
 
-The default evolution search hyperparameters are located in `evolution/default_hyper_params/*.json`. Users can customize the number of iterations, population size, number of parents, number of mutation and crossover operations in each iteration. These parameters will affect the convergence time and robustness of searching results.
+1.  **RoPE Rescaling Factor Search**: Using evolutionary search guided by "needle-driven" PPL to find the optimal factors.
+2.  **Mixed Context Window Training**: Fine-tuning the model to use both original and rescaled RoPE factors.
 
-### Evaluation
-Evaluate long-context perplexity and passkey accuracy:
-``` bash
-bash ./examples/llama3/evaluate.sh
-```
+### RoPE Rescaling Factor Search
 
+Please note that this branch is a dev branch, please view the following scripts for more information.
+
+The needle data generation example for llama3: [pg19_needle_llama3.py](https://github.com/microsoft/LongRoPE/blob/longrope2/examples/longrope2/pg19_needle_llama3.py)
+The evolutionary search example for llama3: [search-llama3-long-factor-cd-33-around-init.sh](https://github.com/microsoft/LongRoPE/blob/longrope2/examples/longrope2/search-llama3-long-factor-cd-33-around-init.sh)
+
+*This step generates the scaling factors, which minimize PPL on synthetic "needle-driven" data.*
+
+### Mixed Context Window Training
+
+For the training part, please view [nnscaler-longrope2-example](https://github.com/microsoft/nnscaler/tree/main/examples/longrope2).
+
+## Results
+
+### Long Context Performance
+
+`LongRoPE2` significantly outperforms prior SOTA methods (NTK, YaRN, and LongRoPE 1.0) on the RULER benchmark, especially at the 128k limit.
+
+**RULER Benchmark (Average Score)**
+| Method (Base: LLaMA3-8B) | 4k | 8k | 16k | 32k | 64k | 128k |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| YaRN | 91.86 | 87.87 | 84.67 | 68.80 | 62.51 | 49.39 |
+| NTK | 94.38 | 92.64 | 87.33 | 91.93 | 79.26 | 73.19 |
+| LongRoPE (Gen 1) | 94.60 | 92.70 | 86.60 | 91.01 | 81.23 | 73.40 |
+| **LongRoPE2 (Ours)** | **94.61** | **93.68** | **92.31** | **90.49** | **85.62** | **82.03** |
+
+`LongRoPE2` also achieves near-perfect, 100% retrieval accuracy on the "Needle in a Haystack" test across all depths and context lengths up to 128k.
+
+### Short Context Performance (Near-Lossless)
+
+The primary goal of `LongRoPE2` is to prevent short-context performance degradation. The model retains over 98.6% of its original capabilities, solving the key drawback of previous methods.
+
+**Standard Short-Context Benchmarks (LLaMA3-8B Base)**
+| Model (LLaMA3-8B) | Avg. | MMLU | MMLU-Pro | HellaSwag | TruthfulQA | GSM8K |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Original LLaMA3-8B (8k) | 56.5 | 66.62 | 35.87 | 82.08 | 44.04 | 54.05 |
+| YaRN | 52.1 | 62.25 | 31.88 | 81.25 | 42.61 | 42.45 |
+| NTK | 54.0 | 63.84 | 34.14 | 82.11 | 43.45 | 46.92 |
+| LongRoPE (Gen 1) | 54.6 | 64.69 | 33.74 | **82.14** | 43.65 | 48.90 |
+| **LongRoPE2 (Ours)** | **55.7** | **65.01** | **34.61** | 81.69 | **46.17** | **50.80** |
+| *% Retained (vs. Original)* | *98.6%* | *97.6%* | *96.5%* | *99.5%* | *104.8%* | *94.0%* |
 
 ## Citation
 
-If you find that LongRoPE helps your research, please consider citing it:
-```
-@misc{ding2024longrope,
-      title={LongRoPE: Extending LLM Context Window Beyond 2 Million Tokens}, 
-      author={Yiran Ding and Li Lyna Zhang and Chengruidong Zhang and Yuanyuan Xu and Ning Shang and Jiahang Xu and Fan Yang and Mao Yang},
-      year={2024},
-      eprint={2402.13753},
+If you find `LongRoPE2` useful in your research, please cite our paper:
+
+```bibtex
+@misc{shang2025longrope2nearlosslessllmcontext,
+      title={LongRoPE2: Near-Lossless LLM Context Window Scaling}, 
+      author={Ning Shang and Li Lyna Zhang and Siyuan Wang and Gaokai Zhang and Gilsinia Lopez and Fan Yang and Weizhu Chen and Mao Yang},
+      year={2025},
+      eprint={2502.20082},
       archivePrefix={arXiv},
-      primaryClass={cs.CL}
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2502.20082}, 
 }
 ```
+
+## Acknowledgements
+
+  * Our work builds upon our previous project, [microsoft/LongRoPE](https://github.com/microsoft/LongRoPE).
+  * We utilized [nnScaler](https://github.com/microsoft/nnscaler) for efficient distributed training.

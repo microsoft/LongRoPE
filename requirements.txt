@@ -1,9 +1,7 @@
-torch==2.1.0
-torchvision==0.16.0
-torchaudio==2.1.0
-transformers==4.41.2
-huggingface-hub==0.23.0
-datasets==2.18.0
+torch
+transformers==4.46.2
+huggingface-hub
+datasets
 azureml-sdk
 accelerate
 datasets

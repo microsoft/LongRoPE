@@ -123,6 +123,7 @@ class GeneticAlgorithm:
     Args:
         evaluators (list[Evaluator]): List of evaluators used to evaluate individuals.
         scale (float): Length scale.
+        init_scale (float): Initial scale for the factors.
         target_length (int): Target sequence length.
         hyper_params (dict[str, float]): Hyperparameters for the genetic algorithm.
         init_factors (np.ndarray): Initial LongRoPE rescale factors.
@@ -136,6 +137,7 @@ class GeneticAlgorithm:
         self,
         evaluators: list[Evaluator],
         scale: float,
+        init_scale: float,
         target_length: int,
         hyper_params: dict[str, float],
         init_factors: np.ndarray,
@@ -143,9 +145,14 @@ class GeneticAlgorithm:
         log_json_path: str,
         output_dir: str,
         recovery: str = None,
+        rope_searched_arg_name: str = "rescale_factors",
+        dim_search_space: list[tuple[float, float]] = None,
+        critical_dim: int = None
     ):
         self.queue = EvaluatorQueue(evaluators)
+        assert scale >= init_scale, f'Scale ({scale}) should be larger than initial scale ({init_scale})'
         self.scale = scale
+        self.init_scale = init_scale
         self.target_length = target_length
 
         self.history: list[Individual] = []
@@ -157,7 +164,9 @@ class GeneticAlgorithm:
         self.crossover_size = int(evo_scale * hyper_params["crossover_size"])        # 交叉操作数量
         self.max_crossover_try = int(evo_scale * hyper_params["max_crossover_try"])  # 交叉重试次数
         self.parents_size = int(evo_scale * hyper_params["parents_size"])            # 亲代数量
-        self.list_step = hyper_params["list_step"]                                   # 搜索空间粒度
+        list_step = hyper_params["list_step"]                                        # 搜索空间粒度
+        self.list_step = [list_step] * init_factors.shape[0] if isinstance(list_step, (int, float)) else list_step
+        assert len(self.list_step) == init_factors.shape[0]
         assert self.parents_size <= self.population_size, \
             f'Number of parents ({self.parents_size}) should not be larger than population size ({self.population_size})'
 
@@ -168,6 +177,11 @@ class GeneticAlgorithm:
         self.recovery = recovery
         self.log_json_path = log_json_path
         self.output_dir = output_dir
+        self.rope_searched_arg_name = rope_searched_arg_name
+        assert dim_search_space is None or all(x < y for x, y in dim_search_space)
+        self.dim_search_space = dim_search_space
+
+        self.critical_dim = critical_dim
 
     def preprocess_init_factors(self, factors: np.ndarray) -> np.ndarray:
         return factors
@@ -189,7 +203,7 @@ class GeneticAlgorithm:
         rescale_factors = self.extract_factors(factors).tolist()
         rope_args={
             'rope_class': 'LongRoPEScaledRotaryEmbedding',
-            'rescale_factors': rescale_factors,
+            self.rope_searched_arg_name: rescale_factors,
             **self.rope_args,
         }
         self.queue.push(indv, rope_args)
@@ -232,13 +246,20 @@ class GeneticAlgorithm:
         if self.recovery is None:
             population = []
             latest_iteration = 0
-            pbar = tqdm(range(self.population_size), desc=f'Generate Initial Population')
+            pbar = tqdm(range(self.population_size * 2), desc=f'Generate Initial Population')
             for i in pbar:
-                if i == 0:
-                    indv = self.make_indv(self.init_factors)
-                    new_indv = indv
+                total_dim, cd_dim = self.init_factors.shape[0], self.critical_dim
+                def ntk_init(total_dim, cd_dim, scale):
+                    ext = scale ** (total_dim / cd_dim)
+                    return [ext ** (i / total_dim) for i in range(cd_dim)] + [scale + 0.1 * i for i in range(total_dim - cd_dim)]
+
+                # Initialize the first few individuals with different init scale values using NTK initialization,
+                # the scale is increased gradually.
+                init_scale_step, init_scale_step_size = 8, (self.scale - self.init_scale) / 8
+                if i < init_scale_step:
+                    new_indv = self.make_indv(np.array(ntk_init(total_dim, cd_dim, self.init_scale + i * init_scale_step_size)))
                 else:
-                    new_indv = self.mutate(indv)
+                    new_indv = self.mutate(population[i-init_scale_step])
                 population.append(new_indv)
                 self.history.append(new_indv)
                 if new_indv.ppl is not None:

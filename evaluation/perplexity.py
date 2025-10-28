@@ -48,19 +48,25 @@ def compute_perplexity(
         max_tokenized_len = num_tokens
 
     encoded_texts = dataset["input_ids"]
-    attn_masks = dataset["attention_mask"]
+    if "cus_labels" in dataset:
+        cus_labels = dataset["cus_labels"]
+    else:
+        cus_labels = None
 
     if num_tokens and truncate:
         encoded_texts = [x[:max_tokenized_len] for x in encoded_texts]
-        attn_masks = [x[:max_tokenized_len] for x in attn_masks]
-        sliding_window = max_tokenized_len
+        cus_labels = [x[:max_tokenized_len] for x in cus_labels] if cus_labels is not None else cus_labels
+        sliding_window = max_tokenized_len + 1 if add_start_token else max_tokenized_len
 
     pbar = tqdm(total=len(encoded_texts), disable=logger.level <= logging.INFO)
 
     nlls = []
-    for encoded_text in encoded_texts:
-
-        labels = torch.tensor([encoded_text], device=device)
+    for i, encoded_text in enumerate(encoded_texts):
+        inputs = torch.tensor([encoded_text], device=device)
+        if cus_labels is not None:
+            labels = torch.tensor([cus_labels[i]], device=device)
+        else:
+            labels = torch.tensor([encoded_text], device=device)
         seq_len = labels.size(1)
         seq_len = min(seq_len, max_sliding_count * sliding_window)
 
@@ -70,13 +76,14 @@ def compute_perplexity(
 
             end_loc = min(begin_loc + max_tokenized_len, seq_len)
             trg_len = end_loc - prev_end_loc
-            input_ids = labels[:, begin_loc:end_loc]
+            input_ids = inputs[:, begin_loc:end_loc]
+            target_ids = labels[:, begin_loc:end_loc]
 
             if add_start_token:
                 bos_tokens_tensor = torch.tensor([[tokenizer.bos_token_id]] * input_ids.size(0), device=device)
                 input_ids = torch.cat([bos_tokens_tensor, input_ids], dim=1)
+                target_ids = torch.cat([bos_tokens_tensor, target_ids], dim=1)
 
-            target_ids = input_ids.clone()
             target_ids[:, :-trg_len] = -100
 
             with torch.no_grad():
@@ -110,7 +117,7 @@ def main(args):
     logger.info(f"Loading tokenized dataset: {args.tokenized}")
     dataset = datasets.load_from_disk(args.tokenized)
     if args.dataset_min_tokens:
-        dataset = dataset.filter(lambda x: x["tokenized_len"] >= args.dataset_min_tokens, num_proc=args.num_proc)
+        dataset = dataset.filter(lambda x: x["tokenized_len"] >= args.dataset_min_tokens if "tokenized_len" in x else len(x["input_ids"]) >= args.dataset_min_tokens, num_proc=args.num_proc)
     if args.samples:
         dataset = dataset[:args.samples]
 
